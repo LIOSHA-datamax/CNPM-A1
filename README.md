@@ -1,11 +1,10 @@
 # BrewLite - Ứng dụng đặt cà phê và thanh toán không tiền mặt
 
-Dự án bài tập lớn môn **Công nghệ Phần mềm (Software Engineering)**.  
-Hệ thống gồm: Backend (NestJS + Prisma + PostgreSQL) và Frontend (Next.js + TailwindCSS).
+Gồm: Backend (NestJS + Prisma + PostgreSQL) và Frontend (Next.js + TailwindCSS).
 
 ---
 
-## 🛠️ Hướng dẫn cài đặt & Chạy cơ sở dữ liệu (Dành cho thành viên trong nhóm)
+## 🛠️ Chạy thử CSDL để xem và test
 
 Sau khi `git clone` hoặc `git pull` repository về máy, các bạn làm theo các bước dưới đây để chạy CSDL và nạp dữ liệu kiểm thử.
 
@@ -62,7 +61,7 @@ npx prisma db seed
 
 Có 2 cách để xem dữ liệu sau khi nạp:
 
-* **Cách 1 - Trực quan nhất (Prisma Studio):**
+* **Cách 1 - (Prisma Studio):**
   ```bash
   npx prisma studio
   ```

@@ -87,7 +87,7 @@ async function main() {
     }
   }
 
-  const defaultPasswordHash = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW'; // 123456
+  const defaultPasswordHash = '$2b$10$SnCsFkQ2g85NLWxcWTlYu.srxZYeEh9rDbtey8mVuYFOvMBMUrZ1K'; // 123456
 
   await prisma.user.upsert({
     where: { email: 'customer@brewlite.com' },

@@ -1,3 +1,5 @@
+// Định nghĩa kiểu dữ liệu dùng chung toàn bộ Frontend BrewLite
+
 export type ProductSize = 'S' | 'M' | 'L';
 
 export interface Topping {
@@ -11,10 +13,9 @@ export interface Product {
   name: string;
   description?: string;
   category?: string;
-  price: number; // Base price for Size S
+  price: number; // Giá cơ bản cho Size S
   imageUrl: string;
   stock: number;
-  version?: number;
   isActive?: boolean;
 }
 
@@ -28,4 +29,16 @@ export interface SelectedProductPayload {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+}
+
+export interface CartItem extends SelectedProductPayload {
+  cartItemId: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  fullName: string;
+  role: 'CUSTOMER' | 'BARISTA' | 'ADMIN';
+  loyaltyPoints: number;
 }

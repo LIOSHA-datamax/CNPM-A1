@@ -2,16 +2,29 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Product, ProductSize, Topping, SelectedProductPayload } from '@/types/product';
-import { DEFAULT_TOPPINGS, SIZE_PRICE_OFFSET } from '@/services/productService';
+import { Product, ProductSize, Topping, SelectedProductPayload } from '@/types';
 
-interface ProductDetailModalProps {
+// Danh sách Topping chuẩn theo đề bài (Mục 7)
+export const DEFAULT_TOPPINGS: Topping[] = [
+  { id: 'top-1', name: 'Trân châu đen', price: 5000 },
+  { id: 'top-2', name: 'Trân châu trắng', price: 7000 },
+  { id: 'top-3', name: 'Kem cheese (Kem)', price: 10000 },
+  { id: 'top-4', name: 'Thạch cà phê', price: 6000 },
+];
+
+export const SIZE_PRICE_OFFSET: Record<ProductSize, number> = {
+  S: 0,
+  M: 5000,
+  L: 10000,
+};
+
+interface ProductModalProps {
   product: Product | null;
   onClose: () => void;
   onAddToCart: (payload: SelectedProductPayload) => void;
 }
 
-export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
+export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   onAddToCart,
@@ -38,22 +51,23 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   if (!product) return null;
 
-  // Tính giá động theo thời gian thực (Task 4)
+  // Cốt lõi Task 4: Tính lại giá tự động theo tùy chọn thời gian thực
   const basePrice = Number(product.price);
   const sizeOffset = SIZE_PRICE_OFFSET[selectedSize] || 0;
-  const toppingsTotal = selectedToppings.reduce((acc, t) => acc + Number(t.price), 0);
+  const toppingsTotal = selectedToppings.reduce((sum, t) => sum + Number(t.price), 0);
   const unitPrice = basePrice + sizeOffset + toppingsTotal;
   const totalPrice = unitPrice * quantity;
 
   const toggleTopping = (topping: Topping) => {
-    setSelectedToppings((prev) => {
-      const exists = prev.some((t) => t.id === topping.id);
-      return exists ? prev.filter((t) => t.id !== topping.id) : [...prev, topping];
-    });
+    setSelectedToppings((prev) =>
+      prev.some((t) => t.id === topping.id)
+        ? prev.filter((t) => t.id !== topping.id)
+        : [...prev, topping]
+    );
   };
 
-  const handleConfirmAddToCart = () => {
-    const payload: SelectedProductPayload = {
+  const handleConfirm = () => {
+    onAddToCart({
       productId: product.id,
       name: product.name,
       imageUrl: product.imageUrl,
@@ -63,26 +77,25 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       quantity,
       unitPrice,
       totalPrice,
-    };
-    onAddToCart(payload);
+    });
     onClose();
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone-900/50 backdrop-blur-xs p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone-900/50 backdrop-blur-2xs p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg max-h-[92vh] flex flex-col rounded-t-2xl sm:rounded-xl bg-white shadow-xl overflow-hidden"
+        className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-t-2xl sm:rounded-xl bg-white shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Modal - Khớp Wireframe (2): Nút mũi tên và tên món */}
-        <div className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-3.5">
+        {/* Header Modal - Wireframe (2): Nút mũi tên và Tên món */}
+        <div className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-3">
           <button
             onClick={onClose}
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-600 hover:bg-stone-100 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-600 hover:bg-stone-100"
             title="Quay lại"
           >
             <svg
@@ -106,7 +119,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <button
             onClick={onClose}
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100"
             title="Đóng"
           >
             <svg
@@ -115,8 +128,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
             >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -124,43 +135,43 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           </button>
         </div>
 
-        {/* Thân cuộn nội dung */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+        {/* Nội dung chi tiết */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* Thông tin món & Ảnh */}
           <div className="flex gap-3.5 items-center">
             <Image
               src={product.imageUrl}
               alt={product.name}
-              width={80}
-              height={80}
+              width={76}
+              height={76}
               unoptimized
-              className="h-20 w-20 rounded-lg object-cover border border-stone-200"
+              className="h-19 w-19 rounded-lg object-cover border border-stone-200"
             />
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-bold text-stone-900 truncate">{product.name}</h3>
               <p className="mt-0.5 text-xs text-stone-500 line-clamp-2 leading-relaxed">
-                {product.description || 'Pha chế tươi mới chuẩn vị tại quầy.'}
+                {product.description || 'Pha chế tươi mới chuẩn vị.'}
               </p>
-              <div className="mt-1.5 text-sm font-semibold text-stone-900">
+              <div className="mt-1 text-sm font-semibold text-stone-900">
                 Giá gốc: {basePrice.toLocaleString('vi-VN')}₫
               </div>
             </div>
           </div>
 
           {/* 1. CHỌN SIZE (Task 4) */}
-          <div className="border-t border-stone-100 pt-4">
+          <div className="border-t border-stone-100 pt-3.5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Kích cỡ (Size)
+                1. Kích cỡ (Size)
               </span>
-              <span className="text-[11px] text-stone-400">Chọn 1</span>
+              <span className="text-[11px] text-stone-400">Bắt buộc</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {(
                 [
-                  { size: 'S', label: 'Size S' },
-                  { size: 'M', label: 'Size M' },
-                  { size: 'L', label: 'Size L' },
+                  { size: 'S' as ProductSize, label: 'Size S' },
+                  { size: 'M' as ProductSize, label: 'Size M' },
+                  { size: 'L' as ProductSize, label: 'Size L' },
                 ] as const
               ).map(({ size, label }) => {
                 const offset = SIZE_PRICE_OFFSET[size];
@@ -170,7 +181,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     key={size}
                     type="button"
                     onClick={() => setSelectedSize(size)}
-                    className={`flex flex-col items-center justify-center rounded-lg border py-2.5 px-2 transition-all ${
+                    className={`flex flex-col items-center justify-center rounded-lg border py-2 px-1 transition-all ${
                       isSelected
                         ? 'border-[#5D3A1A] bg-[#FAF5F0] text-[#5D3A1A] font-semibold ring-1 ring-[#5D3A1A]'
                         : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
@@ -187,10 +198,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           </div>
 
           {/* 2. CHỌN TOPPING (Task 4) */}
-          <div className="border-t border-stone-100 pt-4">
+          <div className="border-t border-stone-100 pt-3.5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Topping thêm
+                2. Topping
               </span>
               <span className="text-[11px] text-stone-400">Tùy chọn</span>
             </div>
@@ -201,7 +212,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div
                     key={topping.id}
                     onClick={() => toggleTopping(topping)}
-                    className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 transition-colors ${
+                    className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 transition-colors ${
                       isChecked
                         ? 'border-[#5D3A1A] bg-[#FAF5F0] text-stone-900'
                         : 'border-stone-200 bg-white hover:bg-stone-50 text-stone-800'
@@ -209,7 +220,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   >
                     <div className="flex items-center gap-2.5">
                       <div
-                        className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${
+                        className={`flex h-4 w-4 items-center justify-center rounded border ${
                           isChecked
                             ? 'border-[#5D3A1A] bg-[#5D3A1A] text-white'
                             : 'border-stone-300 bg-white'
@@ -222,8 +233,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="3.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
                           >
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
@@ -241,60 +250,41 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           </div>
 
           {/* 3. SỐ LƯỢNG */}
-          <div className="flex items-center justify-between border-t border-stone-100 pt-4">
+          <div className="flex items-center justify-between border-t border-stone-100 pt-3.5">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                Số lượng
+                3. Số lượng
               </span>
-              <p className="text-[11px] text-stone-400">Tồn kho: {product.stock}</p>
+              <p className="text-[11px] text-stone-400">Còn lại: {product.stock}</p>
             </div>
-            <div className="flex items-center gap-2.5 border border-stone-200 rounded-lg p-1">
+            <div className="flex items-center gap-2 border border-stone-200 rounded-lg p-1">
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="flex h-7 w-7 items-center justify-center rounded text-stone-600 hover:bg-stone-100 transition-colors"
+                className="flex h-7 w-7 items-center justify-center rounded text-stone-600 hover:bg-stone-100"
               >
-                <svg
-                  className="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                >
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                -
               </button>
-              <span className="w-6 text-center text-sm font-semibold text-stone-900">
+              <span className="w-5 text-center text-xs font-semibold text-stone-900">
                 {quantity}
               </span>
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-                className="flex h-7 w-7 items-center justify-center rounded text-stone-600 hover:bg-stone-100 transition-colors"
+                className="flex h-7 w-7 items-center justify-center rounded text-stone-600 hover:bg-stone-100"
               >
-                <svg
-                  className="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                +
               </button>
             </div>
           </div>
         </div>
 
-        {/* NÚT THÊM VÀO GIỎ TỰ ĐỘNG CẬP NHẬT TIỀN */}
-        <div className="border-t border-stone-200 bg-white p-4">
+        {/* Nút Thêm vào giỏ */}
+        <div className="border-t border-stone-200 bg-white p-3.5">
           <button
             type="button"
-            onClick={handleConfirmAddToCart}
-            className="flex w-full items-center justify-between rounded-lg bg-[#5D3A1A] hover:bg-[#472C14] px-4 py-3 text-white transition-colors text-sm font-semibold"
+            onClick={handleConfirm}
+            className="flex w-full items-center justify-between rounded-lg bg-[#5D3A1A] hover:bg-[#472C14] px-4 py-2.5 text-white text-sm font-semibold transition-colors"
           >
             <span>Thêm vào giỏ</span>
             <span>{totalPrice.toLocaleString('vi-VN')}₫</span>

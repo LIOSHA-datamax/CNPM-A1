@@ -8,13 +8,15 @@ const defaultCustomer: UserProfile = {
   email: 'customer@brewlite.com',
   fullName: 'Nguyễn Văn Khách',
   role: 'CUSTOMER',
-  loyaltyPoints: 121,
+  loyaltyPoints: 100,
 };
 
 interface AppStore {
   // 1. Quản lý tài khoản (Task 7 & 10.4)
   user: UserProfile | null;
+  accessToken: string | null;
   isLoggedIn: boolean;
+  setAuth: (user: UserProfile, token: string) => void;
   logout: () => void;
 
   // 2. Quản lý giỏ hàng (Task 5)
@@ -31,10 +33,19 @@ export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
       user: defaultCustomer,
+      accessToken: null,
       isLoggedIn: true,
 
+      setAuth: (user, token) => {
+        set({
+          user,
+          accessToken: token,
+          isLoggedIn: true,
+        });
+      },
+
       logout: () => {
-        set({ user: null, isLoggedIn: false });
+        set({ user: null, accessToken: null, isLoggedIn: false });
       },
 
       items: [],

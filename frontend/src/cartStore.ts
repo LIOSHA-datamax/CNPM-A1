@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CartItem, SelectedProductPayload, UserProfile } from './types';
+import { CartItem, SelectedProductPayload, UserProfile, OrderConfirmation } from './types';
 
 // Dữ liệu khách hàng mẫu theo đề bài (hiển thị trên Navbar)
 const defaultCustomer: UserProfile = {
@@ -12,7 +12,7 @@ const defaultCustomer: UserProfile = {
 };
 
 interface AppStore {
-  // 1. Quản lý tài khoản (Task 7 & 10.4)
+  // 1. Quản lý tài khoản (Task 7)
   user: UserProfile | null;
   accessToken: string | null;
   isLoggedIn: boolean;
@@ -24,9 +24,15 @@ interface AppStore {
   addItem: (payload: SelectedProductPayload) => void;
   removeItem: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
+  increaseQuantity: (cartItemId: string) => void;
+  decreaseQuantity: (cartItemId: string) => void;
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalAmount: () => number;
+
+  // 3. Quản lý đơn hàng vừa đặt (Task 8)
+  lastOrder: OrderConfirmation | null;
+  setLastOrder: (order: OrderConfirmation | null) => void;
 }
 
 export const useAppStore = create<AppStore>()(
@@ -50,6 +56,7 @@ export const useAppStore = create<AppStore>()(
 
       items: [],
 
+      // Thêm món vào giỏ hàng
       addItem: (payload) => {
         const toppingKey = payload.selectedToppings
           .map((t) => t.id)
@@ -74,12 +81,30 @@ export const useAppStore = create<AppStore>()(
         });
       },
 
+      // Xóa món khỏi giỏ hàng
       removeItem: (cartItemId) => {
         set((state) => ({
           items: state.items.filter((i) => i.cartItemId !== cartItemId),
         }));
       },
 
+      // Tăng số lượng món
+      increaseQuantity: (cartItemId) => {
+        const item = get().items.find((i) => i.cartItemId === cartItemId);
+        if (item) {
+          get().updateQuantity(cartItemId, item.quantity + 1);
+        }
+      },
+
+      // Giảm số lượng món (nếu về 0 thì tự xóa món)
+      decreaseQuantity: (cartItemId) => {
+        const item = get().items.find((i) => i.cartItemId === cartItemId);
+        if (item) {
+          get().updateQuantity(cartItemId, item.quantity - 1);
+        }
+      },
+
+      // Cập nhật số lượng trực tiếp
       updateQuantity: (cartItemId, quantity) => {
         if (quantity <= 0) {
           get().removeItem(cartItemId);
@@ -94,15 +119,22 @@ export const useAppStore = create<AppStore>()(
         }));
       },
 
+      // Xóa toàn bộ giỏ hàng
       clearCart: () => set({ items: [] }),
 
+      // Tính tổng số lượng ly/món trong giỏ hàng
       getTotalItems: () => {
         return get().items.reduce((total, i) => total + i.quantity, 0);
       },
 
+      // Tính tổng tiền giỏ hàng
       getTotalAmount: () => {
         return get().items.reduce((total, i) => total + i.totalPrice, 0);
       },
+
+      // Quản lý đơn hàng vừa đặt thành công (Task 8)
+      lastOrder: null,
+      setLastOrder: (order) => set({ lastOrder: order }),
     }),
     {
       name: 'brewlite_app_storage',

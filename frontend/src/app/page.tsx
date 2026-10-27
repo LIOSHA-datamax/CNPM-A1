@@ -2,9 +2,12 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { Product, SelectedProductPayload } from '@/types';
+import { Product, SelectedProductPayload, OrderConfirmation } from '@/types';
 import { Navbar } from '@/components/Navbar';
 import { ProductModal } from '@/components/ProductModal';
+import { CartDrawer } from '@/components/CartDrawer';
+import { CheckoutModal } from '@/components/CheckoutModal';
+import { OrderSuccessModal } from '@/components/OrderSuccessModal';
 import { useAppStore } from '@/cartStore';
 
 // Dữ liệu mẫu fallback theo đề bài (nếu backend chưa bật)
@@ -55,12 +58,17 @@ export default function MenuPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
 
-  // Modal chi tiết (Task 4)
+  // Modal chi tiết món (Task 4)
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Giỏ hàng
-  const { addItem, getTotalItems, getTotalAmount } = useAppStore();
+  // Giỏ hàng, Thanh toán & Xác nhận đơn (Task 5 & Task 8)
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [isOrderSuccessOpen, setIsOrderSuccessOpen] = useState<boolean>(false);
+  const [completedOrder, setCompletedOrder] = useState<OrderConfirmation | null>(null);
+
+  const { addItem, getTotalItems, getTotalAmount, setLastOrder } = useAppStore();
   const [mounted, setMounted] = useState<boolean>(false);
 
   useEffect(() => {
@@ -93,7 +101,14 @@ export default function MenuPage() {
 
   const handleAddToCart = (payload: SelectedProductPayload) => {
     addItem(payload);
-    showToast(`Đã thêm ${payload.quantity}x ${payload.name} (${payload.size}) vào giỏ`);
+    showToast(`Đã thêm ${payload.quantity}x ${payload.name} (${payload.size}) vào giỏ hàng`);
+  };
+
+  const handlePaymentSuccess = (order: OrderConfirmation) => {
+    setCompletedOrder(order);
+    setLastOrder(order);
+    setIsCheckoutOpen(false);
+    setIsOrderSuccessOpen(true);
   };
 
   const categories = useMemo(() => {
@@ -126,13 +141,13 @@ export default function MenuPage() {
         </div>
       )}
 
-      {/* 1. Header Navbar */}
+      {/* 1. Header Navbar với Badge giỏ hàng (Task 5) */}
       <Navbar
-        onOpenCart={() => showToast(`Giỏ hàng: ${totalItems} món (${totalAmount.toLocaleString('vi-VN')}₫) - Sẵn sàng cho Task 5!`)}
-        onOpenHistory={() => showToast('Màn hình Lịch sử đơn hàng (GET /orders/me) - Bàn giao ở Task 9!')}
+        onOpenCart={() => setIsCartOpen(true)}
+        onAuthSuccess={(msg) => showToast(msg)}
       />
 
-      {/* 2. Nội dung Menu chính (Task 3) */}
+      {/* 2. Nội dung Menu chính */}
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-5">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -187,7 +202,7 @@ export default function MenuPage() {
           </div>
         </div>
 
-        {/* Trạng thái Loading Skeleton (Task 3 DoD) */}
+        {/* Trạng thái Loading Skeleton */}
         {isLoading && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 animate-pulse">
             {[1, 2, 3, 4].map((i) => (
@@ -200,7 +215,7 @@ export default function MenuPage() {
           </div>
         )}
 
-        {/* Trạng thái Empty (Task 3 DoD) */}
+        {/* Trạng thái Empty */}
         {!isLoading && filteredProducts.length === 0 && (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white py-14 px-4 text-center">
             <p className="text-sm font-semibold text-stone-700">Không tìm thấy món phù hợp</p>
@@ -208,7 +223,7 @@ export default function MenuPage() {
           </div>
         )}
 
-        {/* Lưới sản phẩm (Task 3) */}
+        {/* Lưới sản phẩm */}
         {!isLoading && filteredProducts.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {filteredProducts.map((p) => {
@@ -249,24 +264,54 @@ export default function MenuPage() {
         )}
       </main>
 
-      {/* Floating Bar: Chỉ hiện trên Mobile khi giỏ hàng có món */}
+      {/* Floating Bar: Chỉ hiện trên Mobile khi giỏ hàng có món (Task 5) */}
       {totalItems > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-stone-200 bg-white/95 p-3 md:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-stone-200 bg-white/95 p-3 md:hidden shadow-lg backdrop-blur-md">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-stone-400 block">Tạm tính ({totalItems})</span>
+              <span className="text-[10px] text-stone-400 block">Tạm tính ({totalItems} món)</span>
               <span className="text-sm font-bold text-stone-900">{totalAmount.toLocaleString('vi-VN')}₫</span>
             </div>
-            <button onClick={() => showToast(`Giỏ hàng: ${totalItems} món`)} className="rounded-lg bg-[#5D3A1A] px-4 py-2 text-xs font-semibold text-white">Xem giỏ hàng →</button>
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="rounded-lg bg-[#5D3A1A] px-4 py-2 text-xs font-semibold text-white shadow-xs"
+            >
+              Xem giỏ hàng ({totalItems}) →
+            </button>
           </div>
         </div>
       )}
 
-      {/* 3. Modal Chi tiết món (Task 4) */}
+      {/* 3. Modal Chi tiết món & Tùy chọn Size/Topping (Task 4) */}
       <ProductModal
         product={activeProduct}
         onClose={() => setActiveProduct(null)}
         onAddToCart={handleAddToCart}
+      />
+
+      {/* 4. Giỏ hàng Drawer bằng Zustand (Task 5) */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onProceedToCheckout={() => {
+          setIsCartOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
+
+      {/* 5. Màn hình Chọn phương thức thanh toán (Task 8 - Ví điện tử / Thẻ) */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        onSuccess={handlePaymentSuccess}
+      />
+
+      {/* 6. Màn hình Xác nhận đặt hàng thành công (Task 8 - Trạng thái PAID & Mã đơn) */}
+      <OrderSuccessModal
+        isOpen={isOrderSuccessOpen}
+        order={completedOrder}
+        onClose={() => setIsOrderSuccessOpen(false)}
       />
     </div>
   );

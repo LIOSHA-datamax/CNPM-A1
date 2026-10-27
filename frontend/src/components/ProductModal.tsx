@@ -255,7 +255,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
                 3. Số lượng
               </span>
-              <p className="text-[11px] text-stone-400">Còn lại: {product.stock}</p>
             </div>
             <div className="flex items-center gap-2 border border-stone-200 rounded-lg p-1">
               <button

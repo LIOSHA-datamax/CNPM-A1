@@ -42,3 +42,25 @@ export interface UserProfile {
   role: 'CUSTOMER' | 'BARISTA' | 'ADMIN';
   loyaltyPoints: number;
 }
+
+// Kiểu dữ liệu Thanh toán & Đặt hàng (Task 8)
+export type PaymentMethodType = 'E_WALLET' | 'BANK_CARD';
+export type EWalletProvider = 'MOMO' | 'ZALOPAY' | 'VNPAY' | 'SHOPEEPAY';
+export type CardType = 'VISA' | 'MASTERCARD' | 'NAPAS';
+
+export interface OrderConfirmation {
+  orderId: string;
+  orderNumber: string; // Mã hiển thị: #ORD-...
+  items: CartItem[];
+  subtotal: number;
+  discount: number;
+  totalAmount: number;
+  paymentMethod: PaymentMethodType;
+  paymentProviderName: string; // "Ví MoMo", "Thẻ Visa/Mastercard", ...
+  status: 'PAID' | 'PAYMENT_FAILED' | 'PENDING';
+  transactionId: string;
+  createdAt: string;
+  customerName: string;
+  customerEmail: string;
+  notes?: string;
+}

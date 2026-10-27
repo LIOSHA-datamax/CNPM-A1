@@ -1,5 +1,0 @@
-$kind: http-request
-name: 3. GET /products/:id - Chi tiết một sản phẩm
-url: "{{baseUrl}}/products/{{productId}}"
-method: GET
-order: 3000

@@ -1,9 +1,0 @@
-$kind: http-request
-name: 3. GET /auth/me - Kiểm tra JwtAuthGuard
-url: "{{baseUrl}}/auth/me"
-method: GET
-auth:
-  type: bearer
-  credentials:
-    token: "{{accessToken}}"
-order: 3000

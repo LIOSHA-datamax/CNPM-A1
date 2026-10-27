@@ -9,3 +9,5 @@ build/
 Thumbs.db
 .vscode/
 *.bat
+.postman/
+postman/

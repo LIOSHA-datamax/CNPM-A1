@@ -1,0 +1,24 @@
+$kind: http-request
+name: 1. POST /auth/register - Đăng ký tài khoản
+url: "{{baseUrl}}/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "newuser@brewlite.com",
+      "password": "123456",
+      "fullName": "Khách Hàng Mới",
+      "phone": "0912345678"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      if (json && json.access_token) {
+        pm.collectionVariables.set('accessToken', json.access_token);
+      }
+    language: text/javascript
+order: 1000

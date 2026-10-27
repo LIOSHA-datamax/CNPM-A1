@@ -1,0 +1,23 @@
+$kind: http-request
+name: 2. POST /auth/login - Đăng nhập nhận JWT
+url: "{{baseUrl}}/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "customer@brewlite.com",
+      "password": "123456"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Login successful', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });
+      const json = pm.response.json();
+      if (json && json.access_token) {
+        pm.collectionVariables.set('accessToken', json.access_token);
+      }
+    language: text/javascript
+order: 2000

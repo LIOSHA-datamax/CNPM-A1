@@ -1,0 +1,5 @@
+$kind: http-request
+name: 2. GET /products/toppings - Danh sách Topping
+url: "{{baseUrl}}/products/toppings"
+method: GET
+order: 2000

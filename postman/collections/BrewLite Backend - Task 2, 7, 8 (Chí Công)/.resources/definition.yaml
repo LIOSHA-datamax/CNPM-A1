@@ -1,0 +1,7 @@
+$kind: collection
+description: Postman Collection kiểm thử và bàn giao API cho Task 2 (Products), Task 7 (Auth JWT/Bcrypt/Guard), và Task 8 (Mock Payments Gateway).
+variables:
+  baseUrl: http://localhost:4000
+  accessToken: ""
+  productId: ""
+  orderId: ""

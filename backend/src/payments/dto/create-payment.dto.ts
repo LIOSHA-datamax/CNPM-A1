@@ -27,12 +27,4 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsBoolean()
   simulateFailure?: boolean;
-
-  @IsOptional()
-  @IsString()
-  userId?: string;
-
-  @IsOptional()
-  @IsString()
-  userEmail?: string;
 }

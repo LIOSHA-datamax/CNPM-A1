@@ -3,38 +3,29 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAppStore } from '@/cartStore';
+import { useAppStore, executeCheckoutPayment } from '@/cartStore';
 import { Navbar } from '@/components/Navbar';
-import { PaymentMethodType, OrderConfirmation } from '@/types';
+import { PaymentMethodType } from '@/types';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
-  const {
-    items,
-    getTotalAmount,
-    getTotalItems,
-    clearCart,
-    user,
-    accessToken,
-    setLastOrder,
-    updateLoyaltyPoints,
-  } = useAppStore();
+  const { items, getTotalAmount, getTotalItems } = useAppStore();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('E_WALLET');
   const [selectedWallet, setSelectedWallet] = useState<'MOMO' | 'VNPAY' | 'ZALOPAY'>('MOMO');
   const [selectedCardType, setSelectedCardType] = useState<'VISA' | 'NAPAS'>('VISA');
 
-  // Form thẻ
-  const [cardNumber, setCardNumber] = useState<string>('9704 2200 1234 5678');
-  const [cardHolder, setCardHolder] = useState<string>('NGUYEN VAN KHACH');
-  const [cardExpiry, setCardExpiry] = useState<string>('12/28');
-  const [cardCvv, setCardCvv] = useState<string>('888');
+  // Form thẻ do khách tự điền
+  const [cardNumber, setCardNumber] = useState<string>('');
+  const [cardHolder, setCardHolder] = useState<string>('');
+  const [cardExpiry, setCardExpiry] = useState<string>('');
+  const [cardCvv, setCardCvv] = useState<string>('');
 
   // Thông tin nhận hàng & ghi chú
   const [notes, setNotes] = useState<string>('');
-  const [customerPhone, setCustomerPhone] = useState<string>('0901 234 567');
-  const [tableOrAddress, setTableOrAddress] = useState<string>('Bàn số 05 (Uống tại quán)');
+  const [customerPhone, setCustomerPhone] = useState<string>('');
+  const [diningOption, setDiningOption] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN');
 
   // Trạng thái xử lý & giữ pendingOrderId khi retry sau PAYMENT_FAILED
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -57,8 +48,22 @@ export default function CheckoutPage() {
   }, [mounted, items.length, router]);
 
   const handleProcessPayment = async () => {
-    setIsProcessing(true);
     setErrorMessage(null);
+
+    if (!customerPhone.trim()) {
+      setErrorMessage('Vui lòng nhập số điện thoại nhận hàng để quán tiện liên hệ!');
+      return;
+    }
+
+    if (
+      paymentMethod === 'BANK_CARD' &&
+      (!cardNumber.trim() || !cardExpiry.trim() || !cardCvv.trim() || !cardHolder.trim())
+    ) {
+      setErrorMessage('Vui lòng điền đầy đủ thông tin thẻ thanh toán!');
+      return;
+    }
+
+    setIsProcessing(true);
 
     const providerName =
       paymentMethod === 'E_WALLET'
@@ -71,96 +76,37 @@ export default function CheckoutPage() {
         ? 'Thẻ quốc tế Visa / Mastercard'
         : 'Thẻ ATM nội địa (NAPAS)';
 
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    let orderNumber = `#ORD-${randomSuffix}`;
     const orderId = pendingOrderId || `order-${Date.now()}`;
     if (!pendingOrderId) {
       setPendingOrderId(orderId);
     }
-    let transactionId = `TXN-${Date.now().toString().slice(-8)}`;
-    let backendHandledPoints = false;
+
+    const serviceLabel = diningOption === 'DINE_IN' ? 'Uống tại quán' : 'Mang đi';
+    const combinedNotes = [
+      `[${serviceLabel}]`,
+      `SĐT: ${customerPhone.trim()}`,
+      notes.trim(),
+    ]
+      .filter(Boolean)
+      .join(' • ');
 
     try {
-      // Giả lập độ trễ xử lý 1.2s
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      // Gọi backend NestJS Task 8 (POST /payments)
-      try {
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          'idempotency-key': `brewlite-key-${Date.now()}`,
-        };
-        if (accessToken) {
-          headers['Authorization'] = `Bearer ${accessToken}`;
-        }
-
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/payments`,
-          {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              orderId,
-              method: paymentMethod,
-              amount: totalAmount,
-              simulateFailure,
-              userId: user?.id,
-              userEmail: user?.email,
-            }),
-          }
-        );
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.transactionRef) {
-            transactionId = data.transactionRef;
-          }
-          if (data.order?.orderNumber) {
-            orderNumber = data.order.orderNumber.startsWith('#')
-              ? data.order.orderNumber
-              : `#${data.order.orderNumber}`;
-          }
-          if (typeof data.loyaltyPoints === 'number') {
-            updateLoyaltyPoints(data.loyaltyPoints);
-            backendHandledPoints = true;
-          }
-        }
-      } catch {
-        // Fallback giả lập client
-      }
-
-      if (simulateFailure) {
-        throw new Error(
-          'Thanh toán không thành công: Ngân hàng từ chối giao dịch. Giỏ hàng của bạn vẫn được giữ nguyên để thử lại!'
-        );
-      }
-
-      if (!backendHandledPoints && user && totalAmount > 0) {
-        const earned = Math.max(1, Math.floor(totalAmount / 10000));
-        updateLoyaltyPoints(user.loyaltyPoints + earned);
-      }
-
-      const completedOrder: OrderConfirmation = {
+      await executeCheckoutPayment({
         orderId,
-        orderNumber,
-        items: [...items],
-        subtotal: totalAmount,
-        discount: 0,
-        totalAmount,
         paymentMethod,
-        paymentProviderName: providerName,
-        status: 'PAID',
-        transactionId,
-        createdAt: new Date().toISOString(),
-        customerName: user?.fullName || 'Khách vãng lai',
-        customerEmail: user?.email || 'customer@brewlite.com',
-        notes: notes || undefined,
-      };
+        providerName,
+        simulateFailure,
+        notes: combinedNotes,
+      });
 
-      clearCart();
       setPendingOrderId(null);
-      setLastOrder(completedOrder);
       setIsProcessing(false);
+      setCustomerPhone('');
+      setNotes('');
+      setCardNumber('');
+      setCardHolder('');
+      setCardExpiry('');
+      setCardCvv('');
       router.push('/order-success');
     } catch (err: unknown) {
       setIsProcessing(false);
@@ -367,6 +313,7 @@ export default function CheckoutPage() {
                         type="text"
                         value={cardNumber}
                         onChange={(e) => setCardNumber(e.target.value)}
+                        placeholder="Nhập số thẻ ngân hàng..."
                         className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-mono"
                       />
                     </div>
@@ -377,15 +324,18 @@ export default function CheckoutPage() {
                           type="text"
                           value={cardExpiry}
                           onChange={(e) => setCardExpiry(e.target.value)}
+                          placeholder="MM/YY"
                           className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-mono"
                         />
                       </div>
                       <div>
-                        <label className="block text-stone-500 mb-1">CVV</label>
+                        <label className="block text-stone-500 mb-1">CVV/CVC</label>
                         <input
                           type="password"
+                          maxLength={4}
                           value={cardCvv}
                           onChange={(e) => setCardCvv(e.target.value)}
+                          placeholder="CVV"
                           className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-mono"
                         />
                       </div>
@@ -396,6 +346,7 @@ export default function CheckoutPage() {
                         type="text"
                         value={cardHolder}
                         onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
+                        placeholder="NGUYEN VAN A"
                         className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 uppercase"
                       />
                     </div>
@@ -411,21 +362,50 @@ export default function CheckoutPage() {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-stone-600 font-semibold mb-1">Vị trí / Bàn</label>
-                  <input
-                    type="text"
-                    value={tableOrAddress}
-                    onChange={(e) => setTableOrAddress(e.target.value)}
-                    className="w-full rounded-lg border border-stone-200 px-3 py-2"
-                  />
+                  <label className="block text-stone-600 font-semibold mb-1">Hình thức phục vụ</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all ${
+                        diningOption === 'DINE_IN'
+                          ? 'border-[#5D3A1A] bg-amber-50/50 text-[#5D3A1A] font-semibold'
+                          : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={diningOption === 'DINE_IN'}
+                        onChange={() => setDiningOption('DINE_IN')}
+                        className="h-4 w-4 rounded border-stone-300 text-[#5D3A1A] focus:ring-[#5D3A1A]"
+                      />
+                      <span>Uống tại quán</span>
+                    </label>
+                    <label
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all ${
+                        diningOption === 'TAKEAWAY'
+                          ? 'border-[#5D3A1A] bg-amber-50/50 text-[#5D3A1A] font-semibold'
+                          : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={diningOption === 'TAKEAWAY'}
+                        onChange={() => setDiningOption('TAKEAWAY')}
+                        className="h-4 w-4 rounded border-stone-300 text-[#5D3A1A] focus:ring-[#5D3A1A]"
+                      />
+                      <span>Mang đi</span>
+                    </label>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-stone-600 font-semibold mb-1">Số điện thoại</label>
+                  <label className="block text-stone-600 font-semibold mb-1">
+                    Số điện thoại nhận hàng <span className="text-rose-500">*</span>
+                  </label>
                   <input
-                    type="text"
+                    type="tel"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full rounded-lg border border-stone-200 px-3 py-2"
+                    placeholder="Nhập số điện thoại nhận hàng..."
+                    className="w-full rounded-lg border border-stone-200 px-3 py-2 focus:border-[#5D3A1A] focus:outline-none"
                   />
                 </div>
               </div>

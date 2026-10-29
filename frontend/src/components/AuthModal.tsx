@@ -23,10 +23,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setFullName('');
+    setPhone('');
+    setError(null);
+  };
+
   useEffect(() => {
-    if (isOpen) {
-      setError(null);
-    }
+    resetForm();
   }, [isOpen, mode]);
 
   useEffect(() => {
@@ -38,13 +44,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  const fillDemoCustomer = () => {
-    setMode('login');
-    setEmail('customer@brewlite.com');
-    setPassword('123456');
-    setError(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             : `Đăng ký thành công: ${data.user.fullName || data.user.email}`
         );
       }
+      resetForm();
       onClose();
     } catch {
       setError('Không thể kết nối tới Backend (http://localhost:4000).');
@@ -122,9 +122,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <h2 className="text-base font-bold text-stone-900">
               {mode === 'login' ? 'Đăng nhập BrewLite' : 'Đăng ký tài khoản'}
             </h2>
-            <p className="text-[11px] text-stone-500">
-              Xác thực bảo mật bằng JWT & Bcrypt (Task 7)
-            </p>
           </div>
           <button
             type="button"
@@ -162,7 +159,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5">
+        <form onSubmit={handleSubmit} autoComplete="off" className="p-5 space-y-3.5">
           {error && (
             <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 font-medium">
               ⚠️ {error}
@@ -177,6 +174,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Nguyễn Văn A"
@@ -190,6 +188,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </label>
                 <input
                   type="tel"
+                  autoComplete="off"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="0901234567"
@@ -206,9 +205,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <input
               type="email"
               required
+              autoComplete="off"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="customer@brewlite.com"
+              placeholder="Nhập địa chỉ email"
               className="w-full rounded-lg border border-stone-200 px-3 py-2 text-xs sm:text-sm text-stone-900 focus:border-[#5D3A1A] focus:outline-none"
             />
           </div>
@@ -221,27 +221,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               type="password"
               required
               minLength={6}
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Tối thiểu 6 ký tự"
               className="w-full rounded-lg border border-stone-200 px-3 py-2 text-xs sm:text-sm text-stone-900 focus:border-[#5D3A1A] focus:outline-none"
             />
           </div>
-
-          {mode === 'login' && (
-            <div className="flex items-center justify-between pt-0.5">
-              <span className="text-[11px] text-stone-400">
-                Tài khoản mẫu: customer@brewlite.com / 123456
-              </span>
-              <button
-                type="button"
-                onClick={fillDemoCustomer}
-                className="text-[11px] font-semibold text-[#5D3A1A] hover:underline"
-              >
-                Điền nhanh
-              </button>
-            </div>
-          )}
 
           <button
             type="submit"
@@ -259,4 +245,3 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     </div>
   );
 };
-

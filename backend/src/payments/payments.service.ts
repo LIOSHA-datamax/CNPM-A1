@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -42,7 +43,11 @@ export class PaymentsService {
     };
   }
 
-  async processPayment(dto: CreatePaymentDto, headerIdempotencyKey?: string) {
+  async processPayment(
+    dto: CreatePaymentDto,
+    headerIdempotencyKey?: string,
+    authenticatedUserId?: string,
+  ) {
     const resolvedKey =
       dto.idempotencyKey?.trim() ||
       headerIdempotencyKey?.trim() ||
@@ -67,36 +72,21 @@ export class PaymentsService {
       );
     }
 
-    // 2. Fetch order and validate existence (auto-provision if frontend sends direct order-xxx with amount > 0)
+    // 2. Fetch order and validate existence (auto-provision only for valid frontend timestamp order-<digits> with amount >= 10000 and authenticated user)
     let order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
     });
 
     if (
       !order &&
-      dto.orderId.startsWith('order-') &&
+      /^order-\d+$/.test(dto.orderId) &&
       dto.amount !== undefined &&
-      Number(dto.amount) > 0
+      Number(dto.amount) >= 10000 &&
+      authenticatedUserId
     ) {
-      let targetUser = null;
-      if (dto.userId) {
-        targetUser = await this.prisma.user.findUnique({
-          where: { id: dto.userId },
-        });
-      }
-      if (!targetUser && dto.userEmail) {
-        targetUser = await this.prisma.user.findUnique({
-          where: { email: dto.userEmail },
-        });
-      }
-      if (!targetUser) {
-        targetUser = await this.prisma.user.findFirst({
-          where: { role: 'CUSTOMER' },
-        });
-      }
-      if (!targetUser) {
-        targetUser = await this.prisma.user.findFirst();
-      }
+      const targetUser = await this.prisma.user.findUnique({
+        where: { id: authenticatedUserId },
+      });
       if (targetUser) {
         const suffix = dto.orderId.replace('order-', '').slice(-6);
         const rand = Math.floor(100 + Math.random() * 900);
@@ -116,6 +106,13 @@ export class PaymentsService {
 
     if (!order) {
       throw new NotFoundException(`Order with ID "${dto.orderId}" not found`);
+    }
+
+    // Ownership check on payment execution
+    if (authenticatedUserId && order.userId !== authenticatedUserId) {
+      throw new ForbiddenException(
+        'You do not have permission to pay for this order',
+      );
     }
 
     // 3. Order State Machine Guard (PDF Section 9.1):
@@ -141,7 +138,7 @@ export class PaymentsService {
       );
     }
 
-    // 5. Mock Gateway Outcome inside atomic transaction
+    // 5. Mock Gateway Outcome inside atomic transaction with row-level conditional guard
     const isFailure = dto.simulateFailure === true;
     const paymentStatus = isFailure
       ? PaymentStatus.FAILED
@@ -155,6 +152,23 @@ export class PaymentsService {
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
+        // Atomic state transition guard inside transaction to prevent concurrent double-charge (TOCTOU)
+        const updatedCount = await tx.order.updateMany({
+          where: {
+            id: order.id,
+            status: {
+              in: [OrderStatus.PENDING, OrderStatus.PAYMENT_FAILED],
+            },
+          },
+          data: { status: nextOrderStatus },
+        });
+
+        if (updatedCount.count === 0) {
+          throw new BadRequestException(
+            `Invalid order state transition: Order in status "${order.status}" cannot be paid`,
+          );
+        }
+
         const payment = await tx.payment.create({
           data: {
             orderId: order.id,
@@ -166,16 +180,15 @@ export class PaymentsService {
           },
         });
 
-        const updatedOrder = await tx.order.update({
+        const updatedOrder = await tx.order.findUniqueOrThrow({
           where: { id: order.id },
-          data: { status: nextOrderStatus },
         });
 
         let updatedLoyaltyPoints: number | undefined;
-        // Accrue loyalty points on PAID
+        // Accrue loyalty points on PAID: 1 point per full 10,000 VND
         if (!isFailure && order.userId) {
           const pointsEarned =
-            orderTotal > 0 ? Math.max(1, Math.floor(orderTotal / 10000)) : 0;
+            orderTotal >= 10000 ? Math.floor(orderTotal / 10000) : 0;
           if (pointsEarned > 0) {
             const updatedUser = await tx.user.update({
               where: { id: order.userId },
@@ -214,7 +227,26 @@ export class PaymentsService {
     }
   }
 
-  async findByOrder(orderId: string) {
+  async findByOrder(
+    orderId: string,
+    authenticatedUserId?: string,
+    userRole?: string,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID "${orderId}" not found`);
+    }
+
+    const isStaff = userRole === 'ADMIN' || userRole === 'BARISTA';
+    if (!isStaff && order.userId !== authenticatedUserId) {
+      throw new ForbiddenException(
+        'You do not have permission to view payments for this order',
+      );
+    }
+
     const payments = await this.prisma.payment.findMany({
       where: { orderId },
       orderBy: { createdAt: 'desc' },

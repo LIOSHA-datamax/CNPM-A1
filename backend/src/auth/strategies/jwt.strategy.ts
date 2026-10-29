@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { existsSync } from 'fs';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { resolve } from 'path';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface JwtPayload {
@@ -9,13 +11,27 @@ export interface JwtPayload {
   role: string;
 }
 
+export function getJwtSecret(): string {
+  if (!process.env.JWT_SECRET && typeof process.loadEnvFile === 'function') {
+    const envPath = resolve(process.cwd(), '.env');
+    if (existsSync(envPath)) {
+      process.loadEnvFile(envPath);
+    }
+  }
+  const secret = process.env.JWT_SECRET?.trim();
+  if (!secret) {
+    throw new Error('Missing required environment variable: JWT_SECRET');
+  }
+  return secret;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'brewlite_jwt_secret_key_2026',
+      secretOrKey: getJwtSecret(),
     });
   }
 

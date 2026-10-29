@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAppStore } from '@/cartStore';
+import React, { useState, useEffect } from 'react';
+import { useAppStore, executeCheckoutPayment } from '@/cartStore';
 import { PaymentMethodType, OrderConfirmation } from '@/types';
 
 interface CheckoutModalProps {
@@ -15,27 +15,34 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { items, getTotalAmount, getTotalItems, clearCart, user } = useAppStore();
+  const { items, getTotalAmount, getTotalItems } = useAppStore();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('E_WALLET');
   const [selectedWallet, setSelectedWallet] = useState<'MOMO' | 'VNPAY' | 'ZALOPAY'>('MOMO');
   const [selectedCardType, setSelectedCardType] = useState<'VISA' | 'NAPAS'>('VISA');
 
-  // Thông tin thẻ giả lập
-  const [cardNumber, setCardNumber] = useState<string>('9704 2200 1234 5678');
-  const [cardHolder, setCardHolder] = useState<string>(user?.fullName || 'NGUYEN VAN KHACH');
-  const [cardExpiry, setCardExpiry] = useState<string>('12/28');
-  const [cardCvv, setCardCvv] = useState<string>('888');
+  // Thông tin thẻ do khách hàng tự điền
+  const [cardNumber, setCardNumber] = useState<string>('');
+  const [cardHolder, setCardHolder] = useState<string>('');
+  const [cardExpiry, setCardExpiry] = useState<string>('');
+  const [cardCvv, setCardCvv] = useState<string>('');
 
   // Ghi chú đơn hàng & thông tin nhận hàng
   const [notes, setNotes] = useState<string>('');
-  const [customerPhone, setCustomerPhone] = useState<string>('0901 234 567');
-  const [tableOrAddress, setTableOrAddress] = useState<string>('Bàn số 05 (Uống tại quán)');
+  const [customerPhone, setCustomerPhone] = useState<string>('');
+  const [diningOption, setDiningOption] = useState<'DINE_IN' | 'TAKEAWAY'>('DINE_IN');
 
-  // Trạng thái thanh toán
+  // Trạng thái thanh toán & giữ orderId để hỗ trợ Retry khi PAYMENT_FAILED
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [simulateFailure, setSimulateFailure] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setErrorMessage(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -43,8 +50,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const totalItems = getTotalItems();
 
   const handleProcessPayment = async () => {
-    setIsProcessing(true);
     setErrorMessage(null);
+
+    if (!customerPhone.trim()) {
+      setErrorMessage('Vui lòng nhập số điện thoại nhận hàng để quán tiện liên hệ!');
+      return;
+    }
+
+    if (
+      paymentMethod === 'BANK_CARD' &&
+      (!cardNumber.trim() || !cardExpiry.trim() || !cardCvv.trim() || !cardHolder.trim())
+    ) {
+      setErrorMessage('Vui lòng điền đầy đủ thông tin thẻ thanh toán!');
+      return;
+    }
+
+    setIsProcessing(true);
 
     // Chuẩn bị payload thanh toán
     const providerName =
@@ -58,65 +79,44 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         ? 'Thẻ quốc tế Visa / Mastercard'
         : 'Thẻ ATM nội địa (NAPAS)';
 
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    const orderNumber = `#ORD-${randomSuffix}`;
-    const orderId = `order-${Date.now()}`;
-    const transactionId = `TXN-${Date.now().toString().slice(-8)}`;
+    const orderId = pendingOrderId || `order-${Date.now()}`;
+    if (!pendingOrderId) {
+      setPendingOrderId(orderId);
+    }
+
+    const serviceLabel = diningOption === 'DINE_IN' ? 'Uống tại quán' : 'Mang đi';
+    const combinedNotes = [
+      `[${serviceLabel}]`,
+      `SĐT: ${customerPhone.trim()}`,
+      notes.trim(),
+    ]
+      .filter(Boolean)
+      .join(' • ');
 
     try {
-      // Giả lập độ trễ kết nối cổng thanh toán ngân hàng (1.2 giây)
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      // Thử gọi backend nếu có sẵn
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/payments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'idempotency-key': `brewlite-idem-${Date.now()}`,
-          },
-          body: JSON.stringify({
-            orderId,
-            method: paymentMethod,
-            amount: totalAmount,
-            simulateFailure,
-          }),
-        });
-      } catch {
-        // Backend offline -> chạy qua logic giả lập client mượt mà
-      }
-
-      if (simulateFailure) {
-        throw new Error(
-          'Giao dịch bị từ chối bởi ngân hàng phát hành (Mã: 51 - Số dư không đủ hoặc thẻ bị khóa). Giỏ hàng của bạn được bảo lưu nguyên vẹn!'
-        );
-      }
-
-      // Thanh toán thành công -> Tạo bản ghi xác nhận đơn hàng với trạng thái PAID
-      const completedOrder: OrderConfirmation = {
+      const completedOrder = await executeCheckoutPayment({
         orderId,
-        orderNumber,
-        items: [...items],
-        subtotal: totalAmount,
-        discount: 0,
-        totalAmount,
         paymentMethod,
-        paymentProviderName: providerName,
-        status: 'PAID',
-        transactionId,
-        createdAt: new Date().toISOString(),
-        customerName: user?.fullName || 'Khách vãng lai',
-        customerEmail: user?.email || 'customer@brewlite.com',
-        notes: notes || undefined,
-      };
+        providerName,
+        simulateFailure,
+        notes: combinedNotes,
+      });
 
-      // Xóa sạch giỏ hàng khi thanh toán hoàn tất
-      clearCart();
+      setPendingOrderId(null);
       setIsProcessing(false);
+      setCustomerPhone('');
+      setNotes('');
+      setCardNumber('');
+      setCardHolder('');
+      setCardExpiry('');
+      setCardCvv('');
       onSuccess(completedOrder);
     } catch (err: unknown) {
       setIsProcessing(false);
-      const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra trong quá trình xử lý thanh toán!';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Đã có lỗi xảy ra trong quá trình xử lý thanh toán!';
       setErrorMessage(msg);
     }
   };
@@ -195,25 +195,50 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="block text-stone-600 font-semibold mb-1">
-                  Vị trí nhận món / Bàn
+                  Hình thức phục vụ
                 </label>
-                <input
-                  type="text"
-                  value={tableOrAddress}
-                  onChange={(e) => setTableOrAddress(e.target.value)}
-                  placeholder="Ví dụ: Bàn 05 hoặc Mang đi"
-                  className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-[#5D3A1A] focus:outline-none"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <label
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all ${
+                      diningOption === 'DINE_IN'
+                        ? 'border-[#5D3A1A] bg-amber-50/50 text-[#5D3A1A] font-semibold'
+                        : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={diningOption === 'DINE_IN'}
+                      onChange={() => setDiningOption('DINE_IN')}
+                      className="h-4 w-4 rounded border-stone-300 text-[#5D3A1A] focus:ring-[#5D3A1A]"
+                    />
+                    <span>Uống tại quán</span>
+                  </label>
+                  <label
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all ${
+                      diningOption === 'TAKEAWAY'
+                        ? 'border-[#5D3A1A] bg-amber-50/50 text-[#5D3A1A] font-semibold'
+                        : 'border-stone-200 bg-white text-stone-700 hover:border-stone-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={diningOption === 'TAKEAWAY'}
+                      onChange={() => setDiningOption('TAKEAWAY')}
+                      className="h-4 w-4 rounded border-stone-300 text-[#5D3A1A] focus:ring-[#5D3A1A]"
+                    />
+                    <span>Mang đi</span>
+                  </label>
+                </div>
               </div>
               <div>
                 <label className="block text-stone-600 font-semibold mb-1">
-                  Số điện thoại nhận hàng
+                  Số điện thoại nhận hàng <span className="text-rose-500">*</span>
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="0901..."
+                  placeholder="Nhập số điện thoại nhận hàng..."
                   className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-[#5D3A1A] focus:outline-none"
                 />
               </div>
@@ -402,11 +427,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   {/* Form thẻ */}
                   <div className="space-y-2.5 text-xs">
                     <div>
-                      <label className="block text-stone-500 mb-1">Số thẻ (Mock Card)</label>
+                      <label className="block text-stone-500 mb-1">Số thẻ</label>
                       <input
                         type="text"
                         value={cardNumber}
                         onChange={(e) => setCardNumber(e.target.value)}
+                        placeholder="Nhập số thẻ ngân hàng..."
                         className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-mono text-stone-800 focus:border-[#5D3A1A] focus:outline-none"
                       />
                     </div>
@@ -417,6 +443,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           type="text"
                           value={cardExpiry}
                           onChange={(e) => setCardExpiry(e.target.value)}
+                          placeholder="MM/YY"
                           className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-mono text-stone-800 focus:border-[#5D3A1A] focus:outline-none"
                         />
                       </div>
@@ -427,6 +454,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           maxLength={4}
                           value={cardCvv}
                           onChange={(e) => setCardCvv(e.target.value)}
+                          placeholder="CVV"
                           className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-mono text-stone-800 focus:border-[#5D3A1A] focus:outline-none"
                         />
                       </div>
@@ -437,6 +465,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         type="text"
                         value={cardHolder}
                         onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
+                        placeholder="NGUYEN VAN A"
                         className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 uppercase font-medium text-stone-800 focus:border-[#5D3A1A] focus:outline-none"
                       />
                     </div>
@@ -522,4 +551,3 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     </div>
   );
 };
-

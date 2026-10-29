@@ -5,6 +5,18 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private inferCategory(name: string, description?: string | null): string {
+    const lowerName = name.toLowerCase();
+    const lowerDesc = (description || '').toLowerCase();
+    if (lowerName.includes('trà')) {
+      return 'Trà hoa quả';
+    }
+    if (lowerName.includes('sữa') || lowerDesc.includes('truyền thống')) {
+      return 'Cà phê truyền thống';
+    }
+    return 'Cà phê Espresso';
+  }
+
   async findAll(search?: string) {
     const trimmed = search?.trim();
     const products = await this.prisma.product.findMany({
@@ -25,6 +37,9 @@ export class ProductsService {
     return products.map((product) => ({
       ...product,
       price: Number(product.price),
+      category:
+        (product as any).category ||
+        this.inferCategory(product.name, product.description),
     }));
   }
 
@@ -54,6 +69,9 @@ export class ProductsService {
     return {
       ...product,
       price: Number(product.price),
+      category:
+        (product as any).category ||
+        this.inferCategory(product.name, product.description),
       toppings,
     };
   }

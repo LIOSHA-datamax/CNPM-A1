@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Product, ProductSize, Topping, SelectedProductPayload } from '@/types';
 
-// Danh sách Topping chuẩn theo đề bài (Mục 7)
+// Danh sách Topping chuẩn theo đề bài (Fallback khi backend tắt)
 export const DEFAULT_TOPPINGS: Topping[] = [
   { id: 'top-1', name: 'Trân châu đen', price: 5000 },
   { id: 'top-2', name: 'Trân châu trắng', price: 7000 },
@@ -31,7 +31,28 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 }) => {
   const [selectedSize, setSelectedSize] = useState<ProductSize>('M');
   const [selectedToppings, setSelectedToppings] = useState<Topping[]>([]);
+  const [availableToppings, setAvailableToppings] = useState<Topping[]>(DEFAULT_TOPPINGS);
   const [quantity, setQuantity] = useState<number>(1);
+
+  useEffect(() => {
+    const fetchToppings = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/products/toppings`,
+          { cache: 'no-store' }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setAvailableToppings(data);
+          }
+        }
+      } catch {
+        // Fallback giữ nguyên DEFAULT_TOPPINGS khi backend tắt
+      }
+    };
+    fetchToppings();
+  }, []);
 
   useEffect(() => {
     if (product) {
@@ -206,7 +227,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               <span className="text-[11px] text-stone-400">Tùy chọn</span>
             </div>
             <div className="space-y-1.5">
-              {DEFAULT_TOPPINGS.map((topping) => {
+              {availableToppings.map((topping) => {
                 const isChecked = selectedToppings.some((t) => t.id === topping.id);
                 return (
                   <div
@@ -241,7 +262,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       <span className="text-xs font-medium">{topping.name}</span>
                     </div>
                     <span className="text-xs font-semibold text-stone-700">
-                      +{topping.price.toLocaleString('vi-VN')}₫
+                      +{Number(topping.price).toLocaleString('vi-VN')}₫
                     </span>
                   </div>
                 );

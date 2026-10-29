@@ -6,11 +6,13 @@ import { AuthModal } from './AuthModal';
 
 interface NavbarProps {
   onOpenCart?: () => void;
+  onOpenHistory?: () => void;
   onAuthSuccess?: (message: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onOpenCart,
+  onOpenHistory,
   onAuthSuccess,
 }) => {
   const { user, isLoggedIn, logout, getTotalItems } = useAppStore();
@@ -61,6 +63,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="hidden md:flex items-center gap-6">
             <span className="text-sm font-semibold text-[#3D2314]">Menu</span>
 
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              className="flex items-center gap-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors"
+            >
+              <svg
+                className="h-4 w-4 text-stone-500"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span>Lịch sử đơn</span>
+            </button>
+
             {/* Giỏ hàng với Badge số lượng cam (Task 5) */}
             <button
               type="button"
@@ -90,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <div className="h-6 w-[1.5px] bg-stone-200" />
 
-            {/* Thông tin khách hàng & Điểm tích lũy */}
+            {/* Thông tin khách hàng & Điểm tích lũy Loyalty (Task 10.4) */}
             {mounted && isLoggedIn && user ? (
               <div className="flex items-center gap-2.5">
                 <div className="text-right">
@@ -211,6 +233,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex w-full items-center justify-between py-1.5 text-xs font-medium text-stone-800"
             >
               <span>🛒 Xem giỏ hàng ({totalItems} món)</span>
+              <span className="text-stone-400">→</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                if (onOpenHistory) onOpenHistory();
+              }}
+              className="flex w-full items-center justify-between py-1.5 text-xs font-medium text-stone-800"
+            >
+              <span>🕒 Lịch sử đơn hàng (Task 9)</span>
               <span className="text-stone-400">→</span>
             </button>
           </div>

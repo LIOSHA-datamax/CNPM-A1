@@ -10,7 +10,16 @@ import { PaymentMethodType, OrderConfirmation } from '@/types';
 export default function CheckoutPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
-  const { items, getTotalAmount, getTotalItems, clearCart, user, setLastOrder } = useAppStore();
+  const {
+    items,
+    getTotalAmount,
+    getTotalItems,
+    clearCart,
+    user,
+    accessToken,
+    setLastOrder,
+    updateLoyaltyPoints,
+  } = useAppStore();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('E_WALLET');
   const [selectedWallet, setSelectedWallet] = useState<'MOMO' | 'VNPAY' | 'ZALOPAY'>('MOMO');
@@ -27,10 +36,11 @@ export default function CheckoutPage() {
   const [customerPhone, setCustomerPhone] = useState<string>('0901 234 567');
   const [tableOrAddress, setTableOrAddress] = useState<string>('Bàn số 05 (Uống tại quán)');
 
-  // Trạng thái xử lý
+  // Trạng thái xử lý & giữ pendingOrderId khi retry sau PAYMENT_FAILED
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [simulateFailure, setSimulateFailure] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -62,29 +72,59 @@ export default function CheckoutPage() {
         : 'Thẻ ATM nội địa (NAPAS)';
 
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    const orderNumber = `#ORD-${randomSuffix}`;
-    const orderId = `order-${Date.now()}`;
-    const transactionId = `TXN-${Date.now().toString().slice(-8)}`;
+    let orderNumber = `#ORD-${randomSuffix}`;
+    const orderId = pendingOrderId || `order-${Date.now()}`;
+    if (!pendingOrderId) {
+      setPendingOrderId(orderId);
+    }
+    let transactionId = `TXN-${Date.now().toString().slice(-8)}`;
+    let backendHandledPoints = false;
 
     try {
       // Giả lập độ trễ xử lý 1.2s
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      // Thử gọi backend NestJS nếu có bật
+      // Gọi backend NestJS Task 8 (POST /payments)
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/payments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'idempotency-key': `brewlite-key-${Date.now()}`,
-          },
-          body: JSON.stringify({
-            orderId,
-            method: paymentMethod,
-            amount: totalAmount,
-            simulateFailure,
-          }),
-        });
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'idempotency-key': `brewlite-key-${Date.now()}`,
+        };
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/payments`,
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              orderId,
+              method: paymentMethod,
+              amount: totalAmount,
+              simulateFailure,
+              userId: user?.id,
+              userEmail: user?.email,
+            }),
+          }
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.transactionRef) {
+            transactionId = data.transactionRef;
+          }
+          if (data.order?.orderNumber) {
+            orderNumber = data.order.orderNumber.startsWith('#')
+              ? data.order.orderNumber
+              : `#${data.order.orderNumber}`;
+          }
+          if (typeof data.loyaltyPoints === 'number') {
+            updateLoyaltyPoints(data.loyaltyPoints);
+            backendHandledPoints = true;
+          }
+        }
       } catch {
         // Fallback giả lập client
       }
@@ -93,6 +133,11 @@ export default function CheckoutPage() {
         throw new Error(
           'Thanh toán không thành công: Ngân hàng từ chối giao dịch. Giỏ hàng của bạn vẫn được giữ nguyên để thử lại!'
         );
+      }
+
+      if (!backendHandledPoints && user && totalAmount > 0) {
+        const earned = Math.max(1, Math.floor(totalAmount / 10000));
+        updateLoyaltyPoints(user.loyaltyPoints + earned);
       }
 
       const completedOrder: OrderConfirmation = {
@@ -113,6 +158,7 @@ export default function CheckoutPage() {
       };
 
       clearCart();
+      setPendingOrderId(null);
       setLastOrder(completedOrder);
       setIsProcessing(false);
       router.push('/order-success');
@@ -479,4 +525,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-

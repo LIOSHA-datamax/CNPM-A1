@@ -13,7 +13,12 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private formatPaymentResponse(payment: any, order: any, isReplay = false) {
+  private formatPaymentResponse(
+    payment: any,
+    order: any,
+    isReplay = false,
+    loyaltyPoints?: number,
+  ) {
     const normalizedPayment = {
       ...payment,
       amount: Number(payment.amount),
@@ -33,6 +38,7 @@ export class PaymentsService {
       payment: normalizedPayment,
       order: normalizedOrder,
       idempotentReplay: isReplay,
+      ...(loyaltyPoints !== undefined ? { loyaltyPoints } : {}),
     };
   }
 
@@ -61,10 +67,52 @@ export class PaymentsService {
       );
     }
 
-    // 2. Fetch order and validate existence
-    const order = await this.prisma.order.findUnique({
+    // 2. Fetch order and validate existence (auto-provision if frontend sends direct order-xxx with amount > 0)
+    let order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
     });
+
+    if (
+      !order &&
+      dto.orderId.startsWith('order-') &&
+      dto.amount !== undefined &&
+      Number(dto.amount) > 0
+    ) {
+      let targetUser = null;
+      if (dto.userId) {
+        targetUser = await this.prisma.user.findUnique({
+          where: { id: dto.userId },
+        });
+      }
+      if (!targetUser && dto.userEmail) {
+        targetUser = await this.prisma.user.findUnique({
+          where: { email: dto.userEmail },
+        });
+      }
+      if (!targetUser) {
+        targetUser = await this.prisma.user.findFirst({
+          where: { role: 'CUSTOMER' },
+        });
+      }
+      if (!targetUser) {
+        targetUser = await this.prisma.user.findFirst();
+      }
+      if (targetUser) {
+        const suffix = dto.orderId.replace('order-', '').slice(-6);
+        const rand = Math.floor(100 + Math.random() * 900);
+        order = await this.prisma.order.create({
+          data: {
+            id: dto.orderId,
+            orderNumber: `ORD-${suffix}${rand}`,
+            userId: targetUser.id,
+            status: OrderStatus.PENDING,
+            subtotal: Number(dto.amount),
+            discountAmount: 0,
+            total: Number(dto.amount),
+          },
+        });
+      }
+    }
 
     if (!order) {
       throw new NotFoundException(`Order with ID "${dto.orderId}" not found`);
@@ -123,27 +171,30 @@ export class PaymentsService {
           data: { status: nextOrderStatus },
         });
 
+        let updatedLoyaltyPoints: number | undefined;
         // Accrue loyalty points on PAID
         if (!isFailure && order.userId) {
           const pointsEarned =
             orderTotal > 0 ? Math.max(1, Math.floor(orderTotal / 10000)) : 0;
           if (pointsEarned > 0) {
-            await tx.user.update({
+            const updatedUser = await tx.user.update({
               where: { id: order.userId },
               data: {
                 loyaltyPoints: { increment: pointsEarned },
               },
             });
+            updatedLoyaltyPoints = updatedUser.loyaltyPoints;
           }
         }
 
-        return { payment, updatedOrder };
+        return { payment, updatedOrder, updatedLoyaltyPoints };
       });
 
       return this.formatPaymentResponse(
         result.payment,
         result.updatedOrder,
         false,
+        result.updatedLoyaltyPoints,
       );
     } catch (error) {
       if (

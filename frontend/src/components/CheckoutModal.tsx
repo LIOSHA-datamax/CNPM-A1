@@ -15,7 +15,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { items, getTotalAmount, getTotalItems, clearCart, user } = useAppStore();
+  const {
+    items,
+    getTotalAmount,
+    getTotalItems,
+    clearCart,
+    user,
+    accessToken,
+    updateLoyaltyPoints,
+  } = useAppStore();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('E_WALLET');
   const [selectedWallet, setSelectedWallet] = useState<'MOMO' | 'VNPAY' | 'ZALOPAY'>('MOMO');
@@ -32,10 +40,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [customerPhone, setCustomerPhone] = useState<string>('0901 234 567');
   const [tableOrAddress, setTableOrAddress] = useState<string>('Bàn số 05 (Uống tại quán)');
 
-  // Trạng thái thanh toán
+  // Trạng thái thanh toán & giữ orderId để hỗ trợ Retry khi PAYMENT_FAILED
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [simulateFailure, setSimulateFailure] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -59,29 +68,59 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         : 'Thẻ ATM nội địa (NAPAS)';
 
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    const orderNumber = `#ORD-${randomSuffix}`;
-    const orderId = `order-${Date.now()}`;
-    const transactionId = `TXN-${Date.now().toString().slice(-8)}`;
+    let orderNumber = `#ORD-${randomSuffix}`;
+    const orderId = pendingOrderId || `order-${Date.now()}`;
+    if (!pendingOrderId) {
+      setPendingOrderId(orderId);
+    }
+    let transactionId = `TXN-${Date.now().toString().slice(-8)}`;
+    let backendHandledPoints = false;
 
     try {
       // Giả lập độ trễ kết nối cổng thanh toán ngân hàng (1.2 giây)
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      // Thử gọi backend nếu có sẵn
+      // Gọi backend NestJS Task 8 (POST /payments)
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/payments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'idempotency-key': `brewlite-idem-${Date.now()}`,
-          },
-          body: JSON.stringify({
-            orderId,
-            method: paymentMethod,
-            amount: totalAmount,
-            simulateFailure,
-          }),
-        });
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'idempotency-key': `brewlite-idem-${Date.now()}`,
+        };
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/payments`,
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              orderId,
+              method: paymentMethod,
+              amount: totalAmount,
+              simulateFailure,
+              userId: user?.id,
+              userEmail: user?.email,
+            }),
+          }
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.transactionRef) {
+            transactionId = data.transactionRef;
+          }
+          if (data.order?.orderNumber) {
+            orderNumber = data.order.orderNumber.startsWith('#')
+              ? data.order.orderNumber
+              : `#${data.order.orderNumber}`;
+          }
+          if (typeof data.loyaltyPoints === 'number') {
+            updateLoyaltyPoints(data.loyaltyPoints);
+            backendHandledPoints = true;
+          }
+        }
       } catch {
         // Backend offline -> chạy qua logic giả lập client mượt mà
       }
@@ -90,6 +129,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         throw new Error(
           'Giao dịch bị từ chối bởi ngân hàng phát hành (Mã: 51 - Số dư không đủ hoặc thẻ bị khóa). Giỏ hàng của bạn được bảo lưu nguyên vẹn!'
         );
+      }
+
+      // Nếu chạy chế độ offline fallback, cộng điểm loyalty trên client
+      if (!backendHandledPoints && user && totalAmount > 0) {
+        const earned = Math.max(1, Math.floor(totalAmount / 10000));
+        updateLoyaltyPoints(user.loyaltyPoints + earned);
       }
 
       // Thanh toán thành công -> Tạo bản ghi xác nhận đơn hàng với trạng thái PAID
@@ -110,13 +155,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         notes: notes || undefined,
       };
 
-      // Xóa sạch giỏ hàng khi thanh toán hoàn tất
+      // Xóa sạch giỏ hàng & reset pendingOrderId khi thanh toán hoàn tất
       clearCart();
+      setPendingOrderId(null);
       setIsProcessing(false);
       onSuccess(completedOrder);
     } catch (err: unknown) {
       setIsProcessing(false);
-      const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra trong quá trình xử lý thanh toán!';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Đã có lỗi xảy ra trong quá trình xử lý thanh toán!';
       setErrorMessage(msg);
     }
   };
@@ -522,4 +571,3 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     </div>
   );
 };
-

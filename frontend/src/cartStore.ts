@@ -12,11 +12,12 @@ const defaultCustomer: UserProfile = {
 };
 
 interface AppStore {
-  // 1. Quản lý tài khoản (Task 7)
+  // 1. Quản lý tài khoản (Task 7 & 10.4)
   user: UserProfile | null;
   accessToken: string | null;
   isLoggedIn: boolean;
   setAuth: (user: UserProfile, token: string) => void;
+  updateLoyaltyPoints: (points: number) => void;
   logout: () => void;
 
   // 2. Quản lý giỏ hàng (Task 5)
@@ -48,6 +49,12 @@ export const useAppStore = create<AppStore>()(
           accessToken: token,
           isLoggedIn: true,
         });
+      },
+
+      updateLoyaltyPoints: (points) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, loyaltyPoints: points } : null,
+        }));
       },
 
       logout: () => {

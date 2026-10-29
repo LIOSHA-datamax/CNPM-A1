@@ -144,6 +144,7 @@ export default function MenuPage() {
       {/* 1. Header Navbar với Badge giỏ hàng (Task 5) */}
       <Navbar
         onOpenCart={() => setIsCartOpen(true)}
+        onOpenHistory={() => showToast('Màn hình Lịch sử đơn hàng (GET /orders/me) - Bàn giao ở Task 9!')}
         onAuthSuccess={(msg) => showToast(msg)}
       />
 

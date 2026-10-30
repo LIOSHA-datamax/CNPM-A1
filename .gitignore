@@ -27,6 +27,9 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+*.bat
+.postman/
+postman/
 
 # Docker Data
 postgres_data/

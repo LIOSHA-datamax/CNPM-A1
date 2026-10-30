@@ -5,68 +5,74 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Task 2: GET /products
-   * Lấy danh sách sản phẩm (menu cà phê kèm topping)
-   */
-  async findAll() {
-    const [products, toppings] = await Promise.all([
-      this.prisma.product.findMany({
-        where: { isActive: true },
-        orderBy: { createdAt: 'asc' },
-      }),
-      this.prisma.topping.findMany({
-        where: { isAvailable: true },
-      }),
-    ]);
-
-    return {
-      products: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        price: Number(p.price),
-        imageUrl: p.imageUrl,
-        stock: p.stock,
-        version: p.version,
-      })),
-      toppings: toppings.map((t) => ({
-        id: t.id,
-        name: t.name,
-        price: Number(t.price),
-      })),
-    };
+  private inferCategory(name: string, description?: string | null): string {
+    const lowerName = name.toLowerCase();
+    const lowerDesc = (description || '').toLowerCase();
+    if (lowerName.includes('trà')) {
+      return 'Trà hoa quả';
+    }
+    if (lowerName.includes('sữa') || lowerDesc.includes('truyền thống')) {
+      return 'Cà phê truyền thống';
+    }
+    return 'Cà phê Espresso';
   }
 
-  /**
-   * Lấy chi tiết 1 sản phẩm
-   */
+  async findAll(search?: string) {
+    const trimmed = search?.trim();
+    const products = await this.prisma.product.findMany({
+      where: {
+        isActive: true,
+        ...(trimmed
+          ? {
+              OR: [
+                { name: { contains: trimmed, mode: 'insensitive' } },
+                { description: { contains: trimmed, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return products.map((product) => ({
+      ...product,
+      price: Number(product.price),
+      category:
+        (product as any).category ||
+        this.inferCategory(product.name, product.description),
+    }));
+  }
+
+  async findAllToppings() {
+    const toppings = await this.prisma.topping.findMany({
+      where: { isAvailable: true },
+      orderBy: { price: 'asc' },
+    });
+
+    return toppings.map((topping) => ({
+      ...topping,
+      price: Number(topping.price),
+    }));
+  }
+
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
     });
 
-    if (!product) {
-      throw new NotFoundException(`Không tìm thấy sản phẩm có id: ${id}`);
+    if (!product || !product.isActive) {
+      throw new NotFoundException(`Product with ID "${id}" not found`);
     }
 
-    const toppings = await this.prisma.topping.findMany({
-      where: { isAvailable: true },
-    });
+    const toppings = await this.findAllToppings();
 
     return {
-      id: product.id,
-      name: product.name,
-      description: product.description,
+      ...product,
       price: Number(product.price),
-      imageUrl: product.imageUrl,
-      stock: product.stock,
-      version: product.version,
-      availableToppings: toppings.map((t) => ({
-        id: t.id,
-        name: t.name,
-        price: Number(t.price),
-      })),
+      category:
+        (product as any).category ||
+        this.inferCategory(product.name, product.description),
+      toppings,
     };
   }
 }

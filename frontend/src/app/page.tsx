@@ -1,104 +1,321 @@
-import Link from 'next/link';
-import { Coffee, ArrowRight, ShieldCheck, Zap, Clock, Smartphone } from 'lucide-react';
+'use client';
 
-export default function HomePage() {
+import React, { useEffect, useState, useMemo } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { Product, SelectedProductPayload, OrderConfirmation } from '@/types';
+import { Navbar } from '@/components/Navbar';
+import { ProductModal } from '@/components/ProductModal';
+import { CartDrawer } from '@/components/CartDrawer';
+import { CheckoutModal } from '@/components/CheckoutModal';
+import { OrderSuccessModal } from '@/components/OrderSuccessModal';
+import { useAppStore } from '@/cartStore';
+
+// Dữ liệu mẫu fallback theo đề bài (nếu backend chưa bật)
+const FALLBACK_PRODUCTS: Product[] = [
+  {
+    id: 'prod-1',
+    name: 'Cà phê sữa',
+    category: 'Cà phê truyền thống',
+    description: 'Cà phê Robusta truyền thống kết hợp sữa đặc ngọt béo thơm lừng.',
+    price: 35000,
+    imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600',
+    stock: 50,
+  },
+  {
+    id: 'prod-2',
+    name: 'Americano',
+    category: 'Cà phê Espresso',
+    description: 'Espresso đậm vị pha loãng cùng nước tinh khiết thanh nhẹ.',
+    price: 40000,
+    imageUrl: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?w=600',
+    stock: 40,
+  },
+  {
+    id: 'prod-3',
+    name: 'Cappuccino',
+    category: 'Cà phê Espresso',
+    description: 'Espresso Ý hòa quyện cùng lớp bọt sữa mịn màng bồng bềnh.',
+    price: 45000,
+    imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=600',
+    stock: 35,
+  },
+  {
+    id: 'prod-4',
+    name: 'Trà đào',
+    category: 'Trà hoa quả',
+    description: 'Trà đen thơm mát kết hợp miếng đào tươi giòn sần sật.',
+    price: 39000,
+    imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600',
+    stock: 60,
+  },
+];
+
+export default function MenuPage() {
+  const router = useRouter();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Tìm kiếm & Danh mục
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
+
+  // Modal chi tiết món (Task 4)
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Giỏ hàng, Thanh toán & Xác nhận đơn (Task 5 & Task 8)
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [isOrderSuccessOpen, setIsOrderSuccessOpen] = useState<boolean>(false);
+  const [completedOrder, setCompletedOrder] = useState<OrderConfirmation | null>(null);
+
+  const { addItem, getTotalItems, getTotalAmount, setLastOrder } = useAppStore();
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+    loadProducts();
+  }, []);
+
+  // Gọi API backend GET /products (Task 3)
+  const loadProducts = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/products`, {
+        cache: 'no-store',
+      });
+      if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
+      const data = await res.json();
+      setProducts(data);
+    } catch {
+      // Dùng dữ liệu mẫu nếu backend chưa bật
+      setProducts(FALLBACK_PRODUCTS);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleAddToCart = (payload: SelectedProductPayload) => {
+    addItem(payload);
+    showToast(`Đã thêm ${payload.quantity}x ${payload.name} (${payload.size}) vào giỏ hàng`);
+  };
+
+  const handlePaymentSuccess = (order: OrderConfirmation) => {
+    setCompletedOrder(order);
+    setLastOrder(order);
+    setIsCheckoutOpen(false);
+    setIsOrderSuccessOpen(true);
+  };
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      if (p.category) set.add(p.category);
+    });
+    return ['Tất cả', ...Array.from(set)];
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchCat = selectedCategory === 'Tất cả' || p.category === selectedCategory;
+      const matchSearch =
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchCat && matchSearch;
+    });
+  }, [products, selectedCategory, searchQuery]);
+
+  const totalItems = mounted ? getTotalItems() : 0;
+  const totalAmount = mounted ? getTotalAmount() : 0;
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-coffee-900 via-coffee-800 to-coffee-950 text-white p-8 sm:p-14 shadow-2xl">
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-6">
-            <Zap className="w-3.5 h-3.5" />
-            Sprint 1 & Task 9 • Ready for Testing
+    <div className="min-h-screen bg-[#FAF9F6] text-stone-900 pb-16">
+      {/* Toast thông báo */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-stone-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-lg animate-in fade-in">
+          ✓ {toastMessage}
+        </div>
+      )}
+
+      {/* 1. Header Navbar với Badge giỏ hàng (Task 5) & Điều hướng Lịch sử đơn (Task 9) */}
+      <Navbar
+        onOpenCart={() => setIsCartOpen(true)}
+        onOpenHistory={() => router.push('/orders')}
+        onAuthSuccess={(msg) => showToast(msg)}
+      />
+
+      {/* 2. Nội dung Menu chính */}
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-5">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+                Menu đồ uống
+              </h2>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Chọn món yêu thích và thanh toán nhanh chóng tại quầy.
+              </p>
+            </div>
+            {!isLoading && (
+              <span className="text-xs text-stone-500 bg-stone-100 px-2 py-1 rounded">
+                {filteredProducts.length} món
+              </span>
+            )}
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-tight">
-            Hello World! <br />
-            Chào mừng đến với <span className="text-amber-400">BrewLite</span>
-          </h1>
+          {/* Ô tìm kiếm */}
+          <div className="relative">
+            <span className="absolute inset-y-0 left-3 flex items-center text-stone-400">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm kiếm cà phê, trà..."
+              className="w-full rounded-lg border border-stone-200 bg-white py-2 pl-9 pr-9 text-xs sm:text-sm text-stone-900 focus:border-[#5D3A1A] focus:outline-none"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-3 flex items-center text-stone-400 text-xs">✕</button>
+            )}
+          </div>
 
-          <p className="mt-4 text-base sm:text-lg text-coffee-100 font-light leading-relaxed">
-            Ứng dụng đặt cà phê và thanh toán không dùng tiền mặt trong vài chạm.
-            Giảm tối đa thời gian xếp hàng, nhận đồ uống nhanh chóng tại quầy.
-          </p>
+          {/* Bộ lọc danh mục */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`rounded-full px-3.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                  selectedCategory === cat
+                    ? 'bg-[#5D3A1A] text-white'
+                    : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          <div className="mt-8 flex flex-wrap gap-4 items-center">
-            <Link
-              href="/orders"
-              className="px-6 py-3 rounded-xl bg-amber-400 text-stone-950 font-bold hover:bg-amber-300 transition-all flex items-center gap-2 shadow-lg shadow-amber-400/20 text-sm"
+        {/* Trạng thái Loading Skeleton */}
+        {isLoading && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 animate-pulse">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-xl border border-stone-200 bg-white p-3 space-y-2">
+                <div className="aspect-square w-full rounded-lg bg-stone-100" />
+                <div className="h-4 w-3/4 rounded bg-stone-200" />
+                <div className="h-3 w-1/2 rounded bg-stone-100" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Trạng thái Empty */}
+        {!isLoading && filteredProducts.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white py-14 px-4 text-center">
+            <p className="text-sm font-semibold text-stone-700">Không tìm thấy món phù hợp</p>
+            <button onClick={loadProducts} className="mt-3 rounded-lg bg-[#5D3A1A] px-3.5 py-1.5 text-xs text-white">Tải lại</button>
+          </div>
+        )}
+
+        {/* Lưới sản phẩm */}
+        {!isLoading && filteredProducts.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {filteredProducts.map((p) => {
+              const isOutOfStock = p.stock <= 0;
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => !isOutOfStock && setActiveProduct(p)}
+                  className={`group relative flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-3 shadow-2xs transition-all ${
+                    isOutOfStock ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-stone-300'
+                  }`}
+                >
+                  <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-stone-100">
+                    <Image src={p.imageUrl} alt={p.name} fill unoptimized className="object-cover group-hover:scale-102 transition-transform" />
+                    {isOutOfStock ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-stone-900/60 text-white text-xs font-semibold">Hết hàng</div>
+                    ) : (
+                      <span className="absolute top-2 right-2 rounded bg-stone-900/60 px-1.5 py-0.5 text-[10px] text-white">Còn {p.stock}</span>
+                    )}
+                  </div>
+                  <div className="mt-2.5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="line-clamp-1 text-sm font-semibold text-stone-900">{p.name}</h3>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-stone-500">{p.description}</p>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-2">
+                      <div>
+                        <span className="block text-[10px] text-stone-400">Giá từ</span>
+                        <span className="text-sm font-bold text-stone-900">{Number(p.price).toLocaleString('vi-VN')}₫</span>
+                      </div>
+                      <button type="button" disabled={isOutOfStock} className="rounded-lg bg-[#5D3A1A] hover:bg-[#472C14] px-2.5 py-1 text-xs text-white font-medium">Chọn +</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* Floating Bar: Chỉ hiện trên Mobile khi giỏ hàng có món (Task 5) */}
+      {totalItems > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-stone-200 bg-white/95 p-3 md:hidden shadow-lg backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-stone-400 block">Tạm tính ({totalItems} món)</span>
+              <span className="text-sm font-bold text-stone-900">{totalAmount.toLocaleString('vi-VN')}₫</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="rounded-lg bg-[#5D3A1A] px-4 py-2 text-xs font-semibold text-white shadow-xs"
             >
-              <Clock className="w-4 h-4" />
-              Xem Lịch sử đơn hàng (Task 9)
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-
-            <a
-              href="http://localhost:4000/api/docs"
-              target="_blank"
-              rel="noreferrer"
-              className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold transition border border-white/20 text-sm flex items-center gap-2"
-            >
-              Kiểm tra Swagger API (Backend)
-            </a>
+              Xem giỏ hàng ({totalItems}) →
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Decorative background shape */}
-        <div className="absolute -right-16 -bottom-16 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute top-10 right-10 opacity-10 hidden md:block">
-          <Coffee className="w-64 h-64 text-white" />
-        </div>
-      </div>
+      {/* 3. Modal Chi tiết món & Tùy chọn Size/Topping (Task 4) */}
+      <ProductModal
+        product={activeProduct}
+        onClose={() => setActiveProduct(null)}
+        onAddToCart={handleAddToCart}
+      />
 
-      {/* Feature Highlights Grid */}
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 rounded-2xl bg-white border border-stone-200 shadow-sm hover:shadow-md transition">
-          <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center mb-4">
-            <Smartphone className="w-6 h-6" />
-          </div>
-          <h3 className="text-lg font-bold text-stone-800">Đặt món tức thì</h3>
-          <p className="mt-2 text-sm text-stone-600 leading-relaxed">
-            Xem menu sinh động, tùy chỉnh kích cỡ S/M/L, lựa chọn thêm topping theo sở thích cá nhân.
-          </p>
-        </div>
+      {/* 4. Giỏ hàng Drawer bằng Zustand (Task 5) */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onProceedToCheckout={() => {
+          setIsCartOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
 
-        <div className="p-6 rounded-2xl bg-white border border-stone-200 shadow-sm hover:shadow-md transition">
-          <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-4">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <h3 className="text-lg font-bold text-stone-800">Thanh toán không tiền mặt</h3>
-          <p className="mt-2 text-sm text-stone-600 leading-relaxed">
-            Tích hợp cổng thanh toán giả lập (Ví MoMo, Thẻ ngân hàng), cơ chế Idempotent chống trừ tiền 2 lần.
-          </p>
-        </div>
+      {/* 5. Màn hình Chọn phương thức thanh toán (Task 8 - Ví điện tử / Thẻ) */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        onSuccess={handlePaymentSuccess}
+      />
 
-        <div className="p-6 rounded-2xl bg-white border border-stone-200 shadow-sm hover:shadow-md transition">
-          <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center mb-4">
-            <Clock className="w-6 h-6" />
-          </div>
-          <h3 className="text-lg font-bold text-stone-800">Theo dõi trạng thái trực tiếp</h3>
-          <p className="mt-2 text-sm text-stone-600 leading-relaxed">
-            Dễ dàng tra cứu lịch sử đơn hàng từ PENDING $\rightarrow$ PAID $\rightarrow$ PREPARING $\rightarrow$ READY $\rightarrow$ COMPLETED.
-          </p>
-        </div>
-      </div>
-
-      {/* Quick Task 1 & 9 Status Box */}
-      <div className="mt-8 p-6 rounded-2xl bg-amber-50/70 border border-amber-200">
-        <h4 className="font-bold text-amber-950 flex items-center gap-2 text-base">
-          🎯 Báo cáo nhiệm vụ Thành viên 1:
-        </h4>
-        <ul className="mt-3 space-y-2 text-sm text-amber-900">
-          <li className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
-            <strong>Task 1:</strong> Khởi tạo monorepo Frontend (Next.js) + Backend (NestJS), chạy được Hello World, có file .env.example, Git, README.md.
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
-            <strong>Task 9:</strong> Xây dựng API và Màn hình lịch sử đơn hàng (<code className="bg-amber-100 px-1 py-0.5 rounded text-xs font-mono">GET /orders/me</code>), màn hình xác nhận đơn, đóng gói docker-compose 3 service (Frontend, Backend, PostgreSQL), chuẩn bị tài liệu demo và Burndown Chart.
-          </li>
-        </ul>
-      </div>
+      {/* 6. Màn hình Xác nhận đặt hàng thành công (Task 8 & 9 - Trạng thái PAID & Mã đơn) */}
+      <OrderSuccessModal
+        isOpen={isOrderSuccessOpen}
+        order={completedOrder}
+        onClose={() => setIsOrderSuccessOpen(false)}
+      />
     </div>
   );
 }

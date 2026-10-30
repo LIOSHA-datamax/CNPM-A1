@@ -1,22 +1,25 @@
-import { NestFactory } from '@nestjs/core';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
+
+const envPath = resolve(process.cwd(), '.env');
+if (typeof process.loadEnvFile === 'function' && existsSync(envPath)) {
+  process.loadEnvFile(envPath);
+}
+
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Bật CORS cho phép Next.js frontend truy cập
   app.enableCors({
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  // Global prefix: /api
-  app.setGlobalPrefix('api');
-
-  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -35,12 +38,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 4000;
+  const port = process.env.PORT ?? 4000;
   await app.listen(port);
 
   console.log(`\n======================================================`);
-  console.log(`🚀 BrewLite Backend API đang chạy tại: http://localhost:${port}/api`);
-  console.log(`📚 Swagger API Docs (Kiểm thử trực quan): http://localhost:${port}/api/docs`);
+  console.log(`🚀 BrewLite Backend API đang chạy tại: http://localhost:${port}`);
+  console.log(`📚 Swagger API Docs: http://localhost:${port}/api/docs`);
   console.log(`======================================================\n`);
 }
 

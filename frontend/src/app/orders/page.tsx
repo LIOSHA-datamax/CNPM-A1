@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Navbar } from '@/components/Navbar';
 import { 
   Clock, 
   CheckCircle2, 
@@ -184,7 +185,7 @@ export default function OrderHistoryPage() {
 
   const fetchOrders = async () => {
     setLoading(true);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
     try {
       const res = await fetch(`${apiUrl}/orders/me`, { cache: 'no-store' });
@@ -287,7 +288,9 @@ export default function OrderHistoryPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-[#FAF9F6]">
+      <Navbar />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
@@ -510,6 +513,7 @@ export default function OrderHistoryPage() {
           })}
         </div>
       )}
+    </div>
     </div>
   );
 }

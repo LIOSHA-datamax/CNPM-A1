@@ -96,8 +96,8 @@ async function main() {
     products.push(prod);
   }
 
-  // 4. Users
-  const defaultPasswordHash = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW'; // 123456
+  // 4. Users (Password: 123456)
+  const defaultPasswordHash = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW';
 
   const customerUser = await prisma.user.upsert({
     where: { email: 'customer@brewlite.com' },
@@ -131,7 +131,7 @@ async function main() {
 
   if (!existingOrder) {
     // Order 1: PAID (Cappuccino + Topping)
-    const order1 = await prisma.order.create({
+    await prisma.order.create({
       data: {
         orderNumber: 'BL-1042',
         userId: customerUser.id,
@@ -171,7 +171,7 @@ async function main() {
     });
 
     // Order 2: PREPARING (Cà phê sữa + Trà đào)
-    const order2 = await prisma.order.create({
+    await prisma.order.create({
       data: {
         orderNumber: 'BL-1038',
         userId: customerUser.id,

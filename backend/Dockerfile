@@ -40,4 +40,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 4000
 
 # Script khởi động: Chờ DB, push DB schema rồi start server
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

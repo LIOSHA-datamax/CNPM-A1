@@ -99,9 +99,17 @@ export class PaymentsService {
             subtotal: Number(dto.amount),
             discountAmount: 0,
             total: Number(dto.amount),
+            notes: dto.notes?.trim() || null,
           },
         });
       }
+    }
+
+    if (order && dto.notes && !order.notes) {
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { notes: dto.notes.trim() },
+      }).catch(() => null);
     }
 
     if (!order) {

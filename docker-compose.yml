@@ -1,4 +1,5 @@
 services:
+  # 1. Cơ sở dữ liệu PostgreSQL
   postgres:
     image: postgres:16-alpine
     container_name: brewlite_postgres
@@ -11,6 +12,42 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d brewlite"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Backend NestJS REST API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: brewlite_backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/brewlite?schema=public
+      - PORT=4000
+      - JWT_SECRET=brewlite_jwt_secret_key_sgu_2026_super_secure
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 3. Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: brewlite_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000/api
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:

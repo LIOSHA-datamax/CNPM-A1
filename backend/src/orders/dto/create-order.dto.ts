@@ -47,4 +47,8 @@ export class CreateOrderDto {
   @IsString()
   @IsNotEmpty()
   couponCode?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

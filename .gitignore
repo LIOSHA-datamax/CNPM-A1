@@ -1,13 +1,44 @@
+# Dependencies
 node_modules/
-.env
-.env.local
+/.pnp
+.pnp.js
+
+# Production builds
 dist/
 build/
 .next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug & Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 *.log
+
+# Editor & OS
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
 .DS_Store
 Thumbs.db
-.vscode/
 *.bat
 .postman/
 postman/
+
+# Docker Data
+postgres_data/
+
+# Next.js telemetry & cache
+.vercel
+*.tsbuildinfo
+next-env.d.ts

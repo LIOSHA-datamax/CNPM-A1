@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/cartStore';
 
 interface AuthModalProps {
@@ -14,12 +15,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const router = useRouter();
   const { setAuth } = useAppStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [fullName, setFullName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -28,6 +31,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setPassword('');
     setFullName('');
     setPhone('');
+    setPhoneError(null);
     setError(null);
   };
 
@@ -45,9 +49,97 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handlePhoneKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Cho phép các phím chức năng & phím điều hướng
+    if (
+      [
+        'Backspace',
+        'Delete',
+        'Tab',
+        'Escape',
+        'Enter',
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowDown',
+        'Home',
+        'End',
+      ].includes(e.key) ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return;
+    }
+
+    // Nếu người dùng nhập bất kỳ ký tự nào khác số
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      setPhoneError('Vui lòng nhập đúng kí tự');
+      return;
+    }
+
+    // Nếu đã đủ 10 chữ số và người dùng cố gõ thêm
+    const target = e.currentTarget;
+    const hasSelection = target.selectionStart !== target.selectionEnd;
+    if (phone.length >= 10 && !hasSelection) {
+      e.preventDefault();
+      setPhoneError('Số điện thoại không được nhiều hơn 10 chữ số');
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+
+    // Kiểm tra nếu có ký tự không phải số
+    if (/[^0-9]/.test(val)) {
+      setPhoneError('Vui lòng nhập đúng kí tự');
+      const digitsOnly = val.replace(/[^0-9]/g, '');
+      if (digitsOnly.length > 10) {
+        setPhone(digitsOnly.slice(0, 10));
+      } else {
+        setPhone(digitsOnly);
+      }
+      return;
+    }
+
+    if (val.length > 10) {
+      setPhoneError('Số điện thoại không được nhiều hơn 10 chữ số');
+      setPhone(val.slice(0, 10));
+      return;
+    }
+
+    if (val.length > 0 && val.length < 10) {
+      setPhoneError('Số điện thoại không được ít hơn 10 chữ số');
+    } else {
+      setPhoneError(null);
+    }
+
+    setPhone(val);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (mode === 'register') {
+      if (!phone.trim()) {
+        setPhoneError('Vui lòng nhập số điện thoại');
+        return;
+      }
+      if (/[^0-9]/.test(phone)) {
+        setPhoneError('Vui lòng nhập đúng kí tự');
+        return;
+      }
+      if (phone.length < 10) {
+        setPhoneError('Số điện thoại không được ít hơn 10 chữ số');
+        return;
+      }
+      if (phone.length > 10) {
+        setPhoneError('Số điện thoại không được nhiều hơn 10 chữ số');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -98,6 +190,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             : `Đăng ký thành công: ${data.user.fullName || data.user.email}`
         );
       }
+
+      if (data.user.role === 'BARISTA') {
+        router.push('/orders');
+      }
+
       resetForm();
       onClose();
     } catch {
@@ -184,16 +281,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Số điện thoại
+                  Số điện thoại <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="tel"
                   autoComplete="off"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="0901234567"
-                  className="w-full rounded-lg border border-stone-200 px-3 py-2 text-xs sm:text-sm text-stone-900 focus:border-[#5D3A1A] focus:outline-none"
+                  onChange={handlePhoneChange}
+                  onKeyDown={handlePhoneKeyDown}
+                  placeholder="Nhập 10 chữ số (vd: 0901234567)"
+                  maxLength={10}
+                  className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm text-stone-900 focus:outline-none transition-colors ${
+                    phoneError
+                      ? 'border-rose-400 focus:border-rose-600 bg-rose-50/20'
+                      : 'border-stone-200 focus:border-[#5D3A1A]'
+                  }`}
                 />
+                {phoneError && (
+                  <p className="mt-1 text-xs text-rose-600 font-medium flex items-center gap-1">
+                    <span>⚠️</span>
+                    <span>{phoneError}</span>
+                  </p>
+                )}
               </div>
             </>
           )}

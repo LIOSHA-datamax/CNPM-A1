@@ -10,7 +10,7 @@ import { PaymentMethodType } from '@/types';
 export default function CheckoutPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
-  const { items, getTotalAmount, getTotalItems } = useAppStore();
+  const { items, getTotalAmount, getTotalItems, isLoggedIn } = useAppStore();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('E_WALLET');
   const [selectedWallet, setSelectedWallet] = useState<'MOMO' | 'VNPAY' | 'ZALOPAY'>('MOMO');
@@ -40,15 +40,20 @@ export default function CheckoutPage() {
   const totalAmount = mounted ? getTotalAmount() : 0;
   const totalItems = mounted ? getTotalItems() : 0;
 
-  // Nếu giỏ hàng trống và đã load store -> chuyển về trang chủ
+  // Nếu chưa đăng nhập hoặc giỏ hàng trống -> chuyển về trang chủ
   useEffect(() => {
-    if (mounted && items.length === 0) {
+    if (mounted && (!isLoggedIn || items.length === 0)) {
       router.replace('/');
     }
-  }, [mounted, items.length, router]);
+  }, [mounted, isLoggedIn, items.length, router]);
 
   const handleProcessPayment = async () => {
     setErrorMessage(null);
+
+    if (!isLoggedIn) {
+      setErrorMessage('Vui lòng đăng nhập tài khoản trước khi thực hiện thanh toán!');
+      return;
+    }
 
     if (!customerPhone.trim()) {
       setErrorMessage('Vui lòng nhập số điện thoại nhận hàng để quán tiện liên hệ!');

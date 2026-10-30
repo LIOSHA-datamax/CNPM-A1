@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BrewLite - Cà phê & Đặt món không tiền mặt',
-  description: 'Ứng dụng đặt cà phê và thanh toán không dùng tiền mặt BrewLite',
+  title: 'BrewLite - Cà phê & Thanh toán không tiền mặt',
+  description: 'Hệ thống đặt cà phê và thanh toán không tiền mặt - Đồ án Công nghệ Phần mềm',
 };
 
 export default function RootLayout({

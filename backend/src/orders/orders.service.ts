@@ -4,8 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, ProductSize } from '@prisma/client';
-// TODO: chỉnh đường dẫn cho khớp PrismaService của TV4
+import { Prisma, ProductSize, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 
@@ -28,6 +27,261 @@ class VersionConflictError extends Error {}
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Task 9: GET /orders/me
+   * Lấy danh sách lịch sử đơn hàng của người dùng hiện tại
+   * Nếu người dùng là BARISTA hoặc ADMIN: Lấy tất cả đơn hàng của quán để phục vụ pha chế
+   */
+  async getMyOrders(userId?: string) {
+    if (!userId) {
+      return [];
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    if (!user) {
+      return [];
+    }
+
+    const isStaff = user.role === 'BARISTA' || user.role === 'ADMIN';
+
+    const orders = await this.prisma.order.findMany({
+      where: isStaff ? undefined : { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            email: true,
+          },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                price: true,
+              },
+            },
+            toppings: {
+              include: {
+                topping: {
+                  select: {
+                    id: true,
+                    name: true,
+                    price: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            idempotencyKey: true,
+            amount: true,
+            method: true,
+            status: true,
+            transactionRef: true,
+            createdAt: true,
+          },
+        },
+        coupon: {
+          select: {
+            code: true,
+            discountPercent: true,
+            discountAmount: true,
+          },
+        },
+      },
+    });
+
+    return orders.map((order) => this.mapOrder(order));
+  }
+
+  /**
+   * Lấy tất cả đơn hàng của quán (cho Barista / Quầy)
+   */
+  async getAllOrders(status?: OrderStatus) {
+    const orders = await this.prisma.order.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            email: true,
+          },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                price: true,
+              },
+            },
+            toppings: {
+              include: {
+                topping: {
+                  select: {
+                    id: true,
+                    name: true,
+                    price: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            idempotencyKey: true,
+            amount: true,
+            method: true,
+            status: true,
+            transactionRef: true,
+            createdAt: true,
+          },
+        },
+        coupon: {
+          select: {
+            code: true,
+            discountPercent: true,
+            discountAmount: true,
+          },
+        },
+      },
+    });
+
+    return orders.map((order) => this.mapOrder(order));
+  }
+
+  private mapOrder(order: any) {
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      userId: order.userId,
+      customerName: order.user?.fullName || 'Khách hàng',
+      customerPhone: order.user?.phone || '',
+      customerEmail: order.user?.email || '',
+      status: order.status,
+      subtotal: Number(order.subtotal),
+      discountAmount: Number(order.discountAmount),
+      total: Number(order.total),
+      coupon: order.coupon,
+      notes: order.notes || '',
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      items: order.orderItems.map((item: any) => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.product?.name ?? 'Món uống',
+        imageUrl: item.product?.imageUrl ?? '',
+        size: item.size,
+        basePrice: Number(item.basePrice),
+        qty: item.qty,
+        lineTotal: Number(item.lineTotal),
+        toppings: item.toppings.map((t: any) => ({
+          id: t.toppingId,
+          name: t.topping?.name ?? 'Topping',
+          price: Number(t.price),
+        })),
+      })),
+      payments: order.payments.map((p: any) => ({
+        id: p.id,
+        idempotencyKey: p.idempotencyKey,
+        amount: Number(p.amount),
+        method: p.method,
+        status: p.status,
+        transactionRef: p.transactionRef,
+        createdAt: p.createdAt,
+      })),
+    };
+  }
+
+  /**
+   * Xem chi tiết một đơn hàng theo ID hoặc Order Number
+   */
+  async getOrderById(idOrNumber: string) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        OR: [{ id: idOrNumber }, { orderNumber: idOrNumber }],
+      },
+      include: {
+        orderItems: {
+          include: {
+            product: true,
+            toppings: {
+              include: {
+                topping: true,
+              },
+            },
+          },
+        },
+        payments: true,
+        coupon: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Không tìm thấy đơn hàng: ${idOrNumber}`);
+    }
+
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      userId: order.userId,
+      status: order.status,
+      subtotal: Number(order.subtotal),
+      discountAmount: Number(order.discountAmount),
+      total: Number(order.total),
+      coupon: order.coupon,
+      notes: order.notes || '',
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      items: order.orderItems.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.product?.name ?? 'Món uống',
+        imageUrl: item.product?.imageUrl ?? '',
+        size: item.size,
+        basePrice: Number(item.basePrice),
+        qty: item.qty,
+        lineTotal: Number(item.lineTotal),
+        toppings: item.toppings.map((t) => ({
+          id: t.toppingId,
+          name: t.topping?.name ?? 'Topping',
+          price: Number(t.price),
+        })),
+      })),
+      payments: order.payments.map((p) => ({
+        id: p.id,
+        idempotencyKey: p.idempotencyKey,
+        amount: Number(p.amount),
+        method: p.method,
+        status: p.status,
+        transactionRef: p.transactionRef,
+        createdAt: p.createdAt,
+      })),
+    };
+  }
+
+  /**
+   * Task 6 & 10: Tạo đơn hàng với optimistic locking và retry
+   */
   async create(userId: string, dto: CreateOrderDto) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -109,7 +363,6 @@ export class OrdersService {
       });
 
       // ---------- 3. Trừ tồn kho bằng optimistic locking ----------
-      // Sắp xếp theo id để các transaction khoá hàng cùng thứ tự (tránh deadlock).
       for (const productId of [...qtyByProduct.keys()].sort()) {
         const qty = qtyByProduct.get(productId)!;
         const p = productMap.get(productId)!;
@@ -123,7 +376,6 @@ export class OrdersService {
           where: { id: productId, version: p.version, stock: { gte: qty } },
           data: { stock: { decrement: qty }, version: { increment: 1 } },
         });
-        // count = 0: có người vừa sửa sản phẩm này -> rollback và thử lại
         if (res.count === 0) throw new VersionConflictError();
       }
 
@@ -159,7 +411,6 @@ export class OrdersService {
         if (d.gt(subtotal)) d = subtotal;
         discountAmount = d.toDecimalPlaces(0);
 
-        // Giữ chỗ lượt dùng một cách nguyên tử (chống 2 người dùng lượt cuối)
         const reserved = await tx.coupon.updateMany({
           where: {
             id: coupon.id,
@@ -187,6 +438,7 @@ export class OrdersService {
           discountAmount,
           total,
           couponId,
+          notes: dto.notes?.trim() || null,
           orderItems: {
             create: lines.map((l) => ({
               productId: l.item.productId,

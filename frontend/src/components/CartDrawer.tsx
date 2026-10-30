@@ -8,15 +8,18 @@ interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onProceedToCheckout: () => void;
+  onRequireLogin?: () => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
   isOpen,
   onClose,
   onProceedToCheckout,
+  onRequireLogin,
 }) => {
   const {
     items,
+    isLoggedIn,
     increaseQuantity,
     decreaseQuantity,
     removeItem,
@@ -63,7 +66,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   Giỏ hàng của bạn
                 </h2>
                 <p className="text-xs text-stone-500 mt-0.5">
-                  {totalItems > 0 ? `${totalItems} món đang chờ đặt` : 'Chưa có món nào'}
+                  {!isLoggedIn
+                    ? 'Yêu cầu đăng nhập tài khoản'
+                    : totalItems > 0
+                    ? `${totalItems} món đang chờ đặt`
+                    : 'Chưa có món nào'}
                 </p>
               </div>
             </div>
@@ -82,7 +89,40 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
           {/* Cart Content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-            {items.length === 0 ? (
+            {!isLoggedIn ? (
+              <div className="flex h-full flex-col items-center justify-center text-center py-12 px-4">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-800 mb-4">
+                  <svg
+                    className="h-10 w-10 text-[#8A5833]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold text-stone-800">
+                  Vui lòng đăng nhập tài khoản
+                </h3>
+                <p className="mt-1 max-w-xs text-xs text-stone-500">
+                  Bạn cần đăng nhập tài khoản để xem giỏ hàng và đặt món.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onRequireLogin) onRequireLogin();
+                  }}
+                  className="mt-6 rounded-xl bg-[#5D3A1A] hover:bg-[#472C14] px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors"
+                >
+                  Đăng nhập ngay
+                </button>
+              </div>
+            ) : items.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center py-12">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-800 mb-4">
                   <svg
@@ -227,7 +267,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
 
           {/* Footer Summary */}
-          {items.length > 0 && (
+          {isLoggedIn && items.length > 0 && (
             <div className="border-t border-stone-200 bg-stone-50/70 p-4 sm:p-5 space-y-3">
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between text-stone-600">

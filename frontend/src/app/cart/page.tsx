@@ -6,12 +6,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/cartStore';
 import { Navbar } from '@/components/Navbar';
+import { AuthModal } from '@/components/AuthModal';
 
 export default function CartPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
+  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const {
     items,
+    isLoggedIn,
     increaseQuantity,
     decreaseQuantity,
     removeItem,
@@ -53,7 +56,37 @@ export default function CartPage() {
           )}
         </div>
 
-        {totalItems === 0 ? (
+        {!isLoggedIn ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center shadow-2xs">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-800 mb-4">
+              <svg
+                className="h-10 w-10 text-[#8A5833]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-stone-800">
+              Vui lòng đăng nhập tài khoản
+            </h2>
+            <p className="mt-1 max-w-sm text-xs sm:text-sm text-stone-500">
+              Bạn cần đăng nhập tài khoản để xem giỏ hàng và tiến hành đặt món.
+            </p>
+            <button
+              type="button"
+              onClick={() => setAuthModalOpen(true)}
+              className="mt-6 rounded-xl bg-[#5D3A1A] hover:bg-[#472C14] px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs transition-colors"
+            >
+              Đăng nhập ngay
+            </button>
+          </div>
+        ) : totalItems === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center shadow-2xs">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-800 mb-4">
               <svg
@@ -232,6 +265,11 @@ export default function CartPage() {
           </div>
         )}
       </main>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
     </div>
   );
 }

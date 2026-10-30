@@ -74,8 +74,12 @@ export const useAppStore = create<AppStore>()(
 
       items: [],
 
-      // Thêm món vào giỏ hàng
+      // Thêm món vào giỏ hàng (Chỉ cho phép khi đã đăng nhập)
       addItem: (payload) => {
+        const { isLoggedIn } = get();
+        if (!isLoggedIn) {
+          return;
+        }
         const toppingKey = payload.selectedToppings
           .map((t) => t.id)
           .sort()
@@ -144,12 +148,16 @@ export const useAppStore = create<AppStore>()(
 
       // Tính tổng số lượng ly/món trong giỏ hàng
       getTotalItems: () => {
-        return get().items.reduce((total, i) => total + i.quantity, 0);
+        const { isLoggedIn, items } = get();
+        if (!isLoggedIn) return 0;
+        return items.reduce((total, i) => total + i.quantity, 0);
       },
 
       // Tính tổng tiền giỏ hàng
       getTotalAmount: () => {
-        return get().items.reduce((total, i) => total + i.totalPrice, 0);
+        const { isLoggedIn, items } = get();
+        if (!isLoggedIn) return 0;
+        return items.reduce((total, i) => total + i.totalPrice, 0);
       },
 
       // Quản lý đơn hàng vừa đặt thành công (Task 8)
@@ -158,6 +166,14 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'brewlite_app_storage',
+      onRehydrateStorage: () => (state) => {
+        if (
+          state?.user?.email === 'barista@brewlite.com' &&
+          state?.user?.fullName !== 'Nguyễn Văn A'
+        ) {
+          state.user.fullName = 'Nguyễn Văn A';
+        }
+      },
     }
   )
 );
@@ -185,9 +201,54 @@ export async function executeCheckoutPayment(
     );
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 800));
-
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+  // 1. Tạo đơn hàng PENDING qua POST /orders (Task 6)
+  let actualOrderId = params.orderId;
+  let backendOrder: any = null;
+
+  try {
+    const orderPayload = {
+      items: items.map((i) => ({
+        productId: i.productId,
+        size: i.size,
+        qty: i.quantity,
+        toppingIds: i.selectedToppings?.map((t) => t.id) || [],
+      })),
+      notes: params.notes || undefined,
+    };
+
+    const createOrderRes = await fetch(`${apiUrl}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'x-user-id': user.id,
+      },
+      body: JSON.stringify(orderPayload),
+    });
+
+    if (createOrderRes.ok) {
+      backendOrder = await createOrderRes.json();
+      actualOrderId = backendOrder.id;
+    } else {
+      const errData = await createOrderRes.json().catch(() => null);
+      if (errData?.message) {
+        throw new Error(
+          Array.isArray(errData.message)
+            ? errData.message.join(', ')
+            : errData.message
+        );
+      }
+    }
+  } catch (err: any) {
+    if (err?.message && !err.message.includes('fetch')) {
+      throw err;
+    }
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 600));
+
   let res: Response;
 
   try {
@@ -199,10 +260,11 @@ export async function executeCheckoutPayment(
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        orderId: params.orderId,
+        orderId: actualOrderId,
         method: params.paymentMethod,
-        amount: totalAmount,
+        amount: backendOrder ? Number(backendOrder.total) : totalAmount,
         simulateFailure: params.simulateFailure,
+        notes: params.notes,
       }),
     });
   } catch {
@@ -233,21 +295,21 @@ export async function executeCheckoutPayment(
   }
 
   const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-  const orderNumber = data.order?.orderNumber
+  const orderNumber = backendOrder?.orderNumber || (data.order?.orderNumber
     ? data.order.orderNumber.startsWith('#')
       ? data.order.orderNumber
       : `#${data.order.orderNumber}`
-    : `#ORD-${randomSuffix}`;
+    : `#ORD-${randomSuffix}`);
   const transactionId =
     data.transactionRef || `TXN-${Date.now().toString().slice(-8)}`;
 
   const completedOrder: OrderConfirmation = {
-    orderId: params.orderId,
+    orderId: actualOrderId,
     orderNumber,
     items: [...items],
     subtotal: totalAmount,
     discount: 0,
-    totalAmount,
+    totalAmount: backendOrder ? Number(backendOrder.total) : totalAmount,
     paymentMethod: params.paymentMethod,
     paymentProviderName: params.providerName,
     status: 'PAID',

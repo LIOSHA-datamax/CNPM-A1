@@ -115,7 +115,30 @@ Sau khi PostgreSQL đã hoạt động theo Cách 1 hoặc Cách 2:
 
 ## 💻 3. Hướng dẫn chạy dự án trên máy phát triển (Local Dev)
 
-### 1. Khởi động Backend (NestJS):
+### ➤ Cách nhanh nhất: Chạy trực tiếp trên VS Code (Khuyên dùng)
+Dự án đã được cấu hình sẵn các tiện ích chạy trực tiếp trong VS Code:
+
+1. **Cách 1: Nhấn phím F5 (Run & Debug)**
+   - Mở VS Code tại thư mục gốc `CNPM-A1`.
+   - Vào tab **Run and Debug** (`Ctrl + Shift + D`) bên thanh điều hướng trái.
+   - Chọn cấu hình: **`🚀 Fullstack (Frontend + Backend)`** và bấm **▶️ Start Debugging (hoặc nhấn phím F5)**.
+   - VS Code sẽ tự động mở 2 terminal song song: 1 terminal chạy **Backend (port 4000)** và 1 terminal chạy **Frontend (port 3000)**.
+
+2. **Cách 2: Dùng VS Code Build Task (Phím tắt `Ctrl + Shift + B`)**
+   - Nhấn tổ hợp phím **`Ctrl + Shift + B`** (hoặc vào menu `Terminal` -> `Run Task...` -> chọn `🚀 Chạy Fullstack (Backend + Frontend)`).
+
+3. **Cách 3: Chạy 1 lệnh từ Terminal gốc**
+   - Mở Terminal tại thư mục gốc `CNPM-A1` và gõ:
+     ```bash
+     npm run dev
+     ```
+   - Lệnh này sẽ chạy đồng thời cả Backend và Frontend trong cùng 1 cửa sổ với log màu sắc riêng biệt.
+
+---
+
+### ➤ Cách chạy thủ công từng service (Truyền thống)
+
+#### 1. Khởi động Backend (NestJS):
 ```bash
 cd D:\CNPM-A1\backend
 npm run start:dev
@@ -124,11 +147,10 @@ npm run start:dev
 - **Swagger API Docs:** `http://localhost:4000/api/docs` (Dùng để test trực tiếp tất cả API)
 - **API Lịch sử đơn hàng (Task 9):** `http://localhost:4000/api/orders/me`
 
-### 2. Khởi động Frontend (Next.js):
+#### 2. Khởi động Frontend (Next.js):
 Mở một cửa sổ Terminal mới:
 ```bash
 cd D:\CNPM-A1\frontend
-npm install
 npm run dev
 ```
 - **Trang chủ Hello World (Task 1):** `http://localhost:3000`

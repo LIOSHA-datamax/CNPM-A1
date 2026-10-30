@@ -27,4 +27,8 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsBoolean()
   simulateFailure?: boolean;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

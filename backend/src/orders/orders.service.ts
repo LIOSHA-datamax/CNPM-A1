@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, ProductSize } from '@prisma/client';
+import { Prisma, ProductSize, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 
@@ -30,27 +30,35 @@ export class OrdersService {
   /**
    * Task 9: GET /orders/me
    * Lấy danh sách lịch sử đơn hàng của người dùng hiện tại
+   * Nếu người dùng là BARISTA hoặc ADMIN: Lấy tất cả đơn hàng của quán để phục vụ pha chế
    */
   async getMyOrders(userId?: string) {
-    let targetUserId = userId;
-
-    if (!targetUserId) {
-      const defaultUser = await this.prisma.user.findFirst({
-        where: { email: 'customer@brewlite.com' },
-      });
-      if (defaultUser) {
-        targetUserId = defaultUser.id;
-      }
-    }
-
-    if (!targetUserId) {
+    if (!userId) {
       return [];
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    if (!user) {
+      return [];
+    }
+
+    const isStaff = user.role === 'BARISTA' || user.role === 'ADMIN';
+
     const orders = await this.prisma.order.findMany({
-      where: { userId: targetUserId },
+      where: isStaff ? undefined : { userId },
       orderBy: { createdAt: 'desc' },
       include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            email: true,
+          },
+        },
         orderItems: {
           include: {
             product: {
@@ -95,18 +103,89 @@ export class OrdersService {
       },
     });
 
-    return orders.map((order) => ({
+    return orders.map((order) => this.mapOrder(order));
+  }
+
+  /**
+   * Lấy tất cả đơn hàng của quán (cho Barista / Quầy)
+   */
+  async getAllOrders(status?: OrderStatus) {
+    const orders = await this.prisma.order.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            email: true,
+          },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                price: true,
+              },
+            },
+            toppings: {
+              include: {
+                topping: {
+                  select: {
+                    id: true,
+                    name: true,
+                    price: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            idempotencyKey: true,
+            amount: true,
+            method: true,
+            status: true,
+            transactionRef: true,
+            createdAt: true,
+          },
+        },
+        coupon: {
+          select: {
+            code: true,
+            discountPercent: true,
+            discountAmount: true,
+          },
+        },
+      },
+    });
+
+    return orders.map((order) => this.mapOrder(order));
+  }
+
+  private mapOrder(order: any) {
+    return {
       id: order.id,
       orderNumber: order.orderNumber,
       userId: order.userId,
+      customerName: order.user?.fullName || 'Khách hàng',
+      customerPhone: order.user?.phone || '',
+      customerEmail: order.user?.email || '',
       status: order.status,
       subtotal: Number(order.subtotal),
       discountAmount: Number(order.discountAmount),
       total: Number(order.total),
       coupon: order.coupon,
+      notes: order.notes || '',
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
-      items: order.orderItems.map((item) => ({
+      items: order.orderItems.map((item: any) => ({
         id: item.id,
         productId: item.productId,
         productName: item.product?.name ?? 'Món uống',
@@ -115,13 +194,13 @@ export class OrdersService {
         basePrice: Number(item.basePrice),
         qty: item.qty,
         lineTotal: Number(item.lineTotal),
-        toppings: item.toppings.map((t) => ({
+        toppings: item.toppings.map((t: any) => ({
           id: t.toppingId,
           name: t.topping?.name ?? 'Topping',
           price: Number(t.price),
         })),
       })),
-      payments: order.payments.map((p) => ({
+      payments: order.payments.map((p: any) => ({
         id: p.id,
         idempotencyKey: p.idempotencyKey,
         amount: Number(p.amount),
@@ -130,7 +209,7 @@ export class OrdersService {
         transactionRef: p.transactionRef,
         createdAt: p.createdAt,
       })),
-    }));
+    };
   }
 
   /**
@@ -170,6 +249,7 @@ export class OrdersService {
       discountAmount: Number(order.discountAmount),
       total: Number(order.total),
       coupon: order.coupon,
+      notes: order.notes || '',
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       items: order.orderItems.map((item) => ({
@@ -358,6 +438,7 @@ export class OrdersService {
           discountAmount,
           total,
           couponId,
+          notes: dto.notes?.trim() || null,
           orderItems: {
             create: lines.map((l) => ({
               productId: l.item.productId,

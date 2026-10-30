@@ -15,7 +15,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { items, getTotalAmount, getTotalItems } = useAppStore();
+  const { items, getTotalAmount, getTotalItems, isLoggedIn } = useAppStore();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('E_WALLET');
   const [selectedWallet, setSelectedWallet] = useState<'MOMO' | 'VNPAY' | 'ZALOPAY'>('MOMO');
@@ -51,6 +51,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleProcessPayment = async () => {
     setErrorMessage(null);
+
+    if (!isLoggedIn) {
+      setErrorMessage('Vui lòng đăng nhập tài khoản trước khi thực hiện thanh toán!');
+      return;
+    }
 
     if (!customerPhone.trim()) {
       setErrorMessage('Vui lòng nhập số điện thoại nhận hàng để quán tiện liên hệ!');

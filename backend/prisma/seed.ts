@@ -1,4 +1,5 @@
 import { PrismaClient, Role, OrderStatus, ProductSize, PaymentMethod, PaymentStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -97,11 +98,13 @@ async function main() {
   }
 
   // 4. Users (Password: 123456)
-  const defaultPasswordHash = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW';
+  const defaultPasswordHash = await bcrypt.hash('123456', 10);
 
   const customerUser = await prisma.user.upsert({
     where: { email: 'customer@brewlite.com' },
-    update: {},
+    update: {
+      passwordHash: defaultPasswordHash,
+    },
     create: {
       email: 'customer@brewlite.com',
       passwordHash: defaultPasswordHash,
@@ -114,11 +117,14 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: 'barista@brewlite.com' },
-    update: {},
+    update: {
+      passwordHash: defaultPasswordHash,
+      fullName: 'Nguyễn Văn A',
+    },
     create: {
       email: 'barista@brewlite.com',
       passwordHash: defaultPasswordHash,
-      fullName: 'Trần Thị Barista',
+      fullName: 'Nguyễn Văn A',
       phone: '0908765432',
       role: Role.BARISTA,
     },

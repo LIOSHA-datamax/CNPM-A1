@@ -22,12 +22,16 @@ interface ProductModalProps {
   product: Product | null;
   onClose: () => void;
   onAddToCart: (payload: SelectedProductPayload) => void;
+  isLoggedIn?: boolean;
+  onRequireLogin?: () => void;
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   onAddToCart,
+  isLoggedIn = true,
+  onRequireLogin,
 }) => {
   const [selectedSize, setSelectedSize] = useState<ProductSize>('M');
   const [selectedToppings, setSelectedToppings] = useState<Topping[]>([]);
@@ -88,6 +92,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const handleConfirm = () => {
+    if (!isLoggedIn) {
+      if (onRequireLogin) {
+        onRequireLogin();
+      }
+      return;
+    }
     onAddToCart({
       productId: product.id,
       name: product.name,

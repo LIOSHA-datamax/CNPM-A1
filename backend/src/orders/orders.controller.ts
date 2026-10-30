@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -10,13 +11,28 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { OrderStatus } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrdersService } from './orders.service';
+import { OrderLifecycleService } from './order-lifecycle.service';
 
 @ApiTags('Orders')
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly orderLifecycleService: OrderLifecycleService,
+  ) {}
+
+  /**
+   * Lấy danh sách đơn hàng của toàn bộ quán (cho Barista / Quản lý)
+   */
+  @Get()
+  @ApiOperation({ summary: 'Lấy tất cả đơn hàng quán (Barista)' })
+  @ApiResponse({ status: 200, description: 'Danh sách đơn hàng của quán' })
+  async getAllOrders(@Query('status') status?: OrderStatus) {
+    return this.ordersService.getAllOrders(status);
+  }
 
   /**
    * Task 6: POST /orders
@@ -30,7 +46,7 @@ export class OrdersController {
 
   /**
    * Task 9: GET /orders/me
-   * Lấy lịch sử đơn hàng của người dùng hiện tại
+   * Lấy lịch sử đơn hàng của người dùng hiện tại (Nếu Barista/Admin sẽ lấy tất cả)
    */
   @Get('me')
   @ApiOperation({ summary: 'Lấy danh sách lịch sử đơn hàng của người dùng hiện tại (Task 9)' })
@@ -43,7 +59,25 @@ export class OrdersController {
   ) {
     const fromJwt = req.user?.id ?? req.user?.userId ?? req.user?.sub;
     const effectiveUserId = fromJwt || userIdHeader || devUserIdHeader || userIdQuery;
+    if (!effectiveUserId) {
+      return [];
+    }
     return this.ordersService.getMyOrders(effectiveUserId);
+  }
+
+  /**
+   * Cập nhật trạng thái đơn hàng theo State Machine (Task 10.1)
+   * Barista: PAID -> PREPARING -> READY
+   * Khách hàng: READY -> COMPLETED
+   */
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Chuyển trạng thái đơn hàng theo State Machine (Task 10.1)' })
+  @ApiResponse({ status: 200, description: 'Chuyển trạng thái thành công' })
+  async updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: OrderStatus,
+  ) {
+    return this.orderLifecycleService.transition(id, status);
   }
 
   /**

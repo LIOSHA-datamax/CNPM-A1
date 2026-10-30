@@ -28,6 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const totalItems = mounted ? getTotalItems() : 0;
+  const isBarista = mounted && isLoggedIn && user?.role === 'BARISTA';
 
   const handleHistoryClick = () => {
     if (onOpenHistory) {
@@ -72,55 +73,66 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* NAVIGATION & USER ACTIONS (Desktop) */}
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-sm font-semibold text-[#3D2314] hover:text-[#5D3A1A] transition-colors">
-              Menu
-            </Link>
-
-            <Link
-              href="/orders"
-              className="flex items-center gap-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors"
-            >
-              <svg
-                className="h-4 w-4 text-stone-500"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {isBarista ? (
+              <Link
+                href="/orders"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold hover:bg-amber-100 transition shadow-2xs"
               >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              <span>Lịch sử đơn</span>
-            </Link>
+                <span>☕ Bảng đơn pha chế quầy</span>
+              </Link>
+            ) : (
+              <>
+                <Link href="/" className="text-sm font-semibold text-[#3D2314] hover:text-[#5D3A1A] transition-colors">
+                  Menu
+                </Link>
 
-            {/* Giỏ hàng với Badge số lượng cam (Task 5) */}
-            <button
-              type="button"
-              onClick={onOpenCart}
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg text-stone-700 hover:bg-stone-100 transition-colors"
-              title="Giỏ hàng"
-            >
-              <svg
-                className="h-5 w-5 text-stone-800"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-                <path d="M3 6h18" />
-                <path d="M16 10a4 4 0 0 1-8 0" />
-              </svg>
-              {totalItems > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-[#E06D14] text-[10px] font-bold text-white shadow-xs">
-                  {totalItems}
-                </span>
-              )}
-            </button>
+                <Link
+                  href="/orders"
+                  className="flex items-center gap-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors"
+                >
+                  <svg
+                    className="h-4 w-4 text-stone-500"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <span>Lịch sử đơn</span>
+                </Link>
+
+                {/* Giỏ hàng với Badge số lượng cam (Task 5) */}
+                <button
+                  type="button"
+                  onClick={onOpenCart}
+                  className="relative flex h-9 w-9 items-center justify-center rounded-lg text-stone-700 hover:bg-stone-100 transition-colors"
+                  title="Giỏ hàng"
+                >
+                  <svg
+                    className="h-5 w-5 text-stone-800"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                    <path d="M3 6h18" />
+                    <path d="M16 10a4 4 0 0 1-8 0" />
+                  </svg>
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-[#E06D14] text-[10px] font-bold text-white shadow-xs">
+                      {totalItems}
+                    </span>
+                  )}
+                </button>
+              </>
+            )}
 
             <div className="h-6 w-[1.5px] bg-stone-200" />
 
@@ -128,11 +140,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             {mounted && isLoggedIn && user ? (
               <div className="flex items-center gap-2.5">
                 <div className="text-right">
-                  <div className="text-xs font-semibold text-stone-900 leading-tight">
-                    {user.fullName}
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-xs font-semibold text-stone-900 leading-tight">
+                      {user.fullName}
+                    </span>
+                    {user.role === 'BARISTA' && (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                        Barista
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] font-medium text-[#B36829]">
-                    {user.loyaltyPoints} điểm tích lũy
+                    {user.role === 'BARISTA' ? 'Nhân viên Barista' : `${user.loyaltyPoints} điểm tích lũy`}
                   </div>
                 </div>
 
@@ -170,28 +189,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* MOBILE VIEW */}
           <div className="flex md:hidden items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onOpenCart}
-              className="relative flex h-9 w-9 items-center justify-center rounded text-stone-700"
-            >
-              <svg
-                className="h-5 w-5 text-stone-800"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+            {!isBarista && (
+              <button
+                type="button"
+                onClick={onOpenCart}
+                className="relative flex h-9 w-9 items-center justify-center rounded text-stone-700"
               >
-                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-                <path d="M3 6h18" />
-                <path d="M16 10a4 4 0 0 1-8 0" />
-              </svg>
-              {totalItems > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-[#E06D14] text-[10px] font-bold text-white shadow-xs">
-                  {totalItems}
-                </span>
-              )}
-            </button>
+                <svg
+                  className="h-5 w-5 text-stone-800"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                  <path d="M3 6h18" />
+                  <path d="M16 10a4 4 0 0 1-8 0" />
+                </svg>
+                {totalItems > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-[#E06D14] text-[10px] font-bold text-white shadow-xs">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+            )}
 
             <button
               type="button"
@@ -209,9 +230,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             {mounted && isLoggedIn && user ? (
               <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                 <div>
-                  <p className="text-xs font-bold text-stone-900">{user.fullName}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-bold text-stone-900">{user.fullName}</p>
+                    {user.role === 'BARISTA' && (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                        Barista
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-[#B36829] font-medium">
-                    {user.loyaltyPoints} điểm tích lũy
+                    {user.role === 'BARISTA' ? 'Nhân viên Barista' : `${user.loyaltyPoints} điểm tích lũy`}
                   </p>
                 </div>
                 <button
@@ -236,23 +264,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                if (onOpenCart) onOpenCart();
-              }}
-              className="flex w-full items-center justify-between py-1.5 text-xs font-medium text-stone-800"
-            >
-              <span>🛒 Xem giỏ hàng ({totalItems} món)</span>
-              <span className="text-stone-400">→</span>
-            </button>
+            {!isBarista && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (onOpenCart) onOpenCart();
+                }}
+                className="flex w-full items-center justify-between py-1.5 text-xs font-medium text-stone-800"
+              >
+                <span>🛒 Xem giỏ hàng ({totalItems} món)</span>
+                <span className="text-stone-400">→</span>
+              </button>
+            )}
             <Link
               href="/orders"
               onClick={() => setMobileMenuOpen(false)}
               className="flex w-full items-center justify-between py-1.5 text-xs font-medium text-stone-800"
             >
-              <span>🕒 Lịch sử đơn hàng (Task 9)</span>
+              <span>{isBarista ? '☕ Bảng đơn pha chế quầy' : '🕒 Lịch sử đơn hàng'}</span>
               <span className="text-stone-400">→</span>
             </Link>
           </div>

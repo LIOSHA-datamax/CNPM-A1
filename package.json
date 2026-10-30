@@ -1,0 +1,22 @@
+{
+  "name": "brewlite-monorepo",
+  "version": "1.0.0",
+  "description": "BrewLite - NestJS + Next.js + PostgreSQL",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"green.bold,cyan.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm --prefix backend run start:dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:push": "npm --prefix backend run prisma:push",
+    "prisma:seed": "npm --prefix backend run prisma:seed",
+    "prisma:studio": "npm --prefix backend run prisma:studio",
+    "docker:db": "docker compose up -d postgres"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

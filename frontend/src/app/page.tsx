@@ -9,6 +9,7 @@ import { ProductModal } from '@/components/ProductModal';
 import { CartDrawer } from '@/components/CartDrawer';
 import { CheckoutModal } from '@/components/CheckoutModal';
 import { OrderSuccessModal } from '@/components/OrderSuccessModal';
+import { AuthModal } from '@/components/AuthModal';
 import { useAppStore } from '@/cartStore';
 
 // Dữ liệu mẫu fallback theo đề bài (nếu backend chưa bật)
@@ -62,15 +63,16 @@ export default function MenuPage() {
 
   // Modal chi tiết món (Task 4)
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' } | null>(null);
 
   // Giỏ hàng, Thanh toán & Xác nhận đơn (Task 5 & Task 8)
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [isOrderSuccessOpen, setIsOrderSuccessOpen] = useState<boolean>(false);
+  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [completedOrder, setCompletedOrder] = useState<OrderConfirmation | null>(null);
 
-  const { addItem, getTotalItems, getTotalAmount, setLastOrder } = useAppStore();
+  const { addItem, getTotalItems, getTotalAmount, setLastOrder, isLoggedIn, user } = useAppStore();
   const [mounted, setMounted] = useState<boolean>(false);
 
   useEffect(() => {
@@ -96,14 +98,37 @@ export default function MenuPage() {
     }
   };
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2500);
+  const showToast = (message: string, type: 'success' | 'warning' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSelectProduct = (p: Product) => {
+    if (p.stock <= 0) return;
+    if (user?.role === 'BARISTA') {
+      showToast('Tài khoản nhân viên chỉ dùng để quản lý đơn hàng quầy, không thể đặt món!', 'warning');
+      return;
+    }
+    if (!isLoggedIn) {
+      showToast('Vui lòng đăng nhập tài khoản trước khi thêm món!', 'warning');
+      setAuthModalOpen(true);
+      return;
+    }
+    setActiveProduct(p);
   };
 
   const handleAddToCart = (payload: SelectedProductPayload) => {
+    if (user?.role === 'BARISTA') {
+      showToast('Tài khoản nhân viên chỉ dùng để quản lý đơn hàng quầy, không thể đặt món!', 'warning');
+      return;
+    }
+    if (!isLoggedIn) {
+      showToast('Vui lòng đăng nhập tài khoản trước khi thêm món!', 'warning');
+      setAuthModalOpen(true);
+      return;
+    }
     addItem(payload);
-    showToast(`Đã thêm ${payload.quantity}x ${payload.name} (${payload.size}) vào giỏ hàng`);
+    showToast(`Đã thêm ${payload.quantity}x ${payload.name} (${payload.size}) vào giỏ hàng`, 'success');
   };
 
   const handlePaymentSuccess = (order: OrderConfirmation) => {
@@ -137,9 +162,16 @@ export default function MenuPage() {
   return (
     <div className="min-h-screen bg-[#FAF9F6] text-stone-900 pb-16">
       {/* Toast thông báo */}
-      {toastMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-stone-900 px-4 py-2 text-xs sm:text-sm font-medium text-white shadow-lg animate-in fade-in">
-          ✓ {toastMessage}
+      {toast && (
+        <div
+          className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xl animate-in fade-in flex items-center gap-2 ${
+            toast.type === 'warning'
+              ? 'bg-amber-800 border border-amber-600'
+              : 'bg-stone-900 border border-stone-800'
+          }`}
+        >
+          <span>{toast.type === 'warning' ? '⚠️' : '✓'}</span>
+          <span>{toast.message}</span>
         </div>
       )}
 
@@ -147,8 +179,29 @@ export default function MenuPage() {
       <Navbar
         onOpenCart={() => setIsCartOpen(true)}
         onOpenHistory={() => router.push('/orders')}
-        onAuthSuccess={(msg) => showToast(msg)}
+        onAuthSuccess={(msg) => showToast(msg, 'success')}
       />
+
+      {/* Banner thông báo dành riêng cho tài khoản Nhân viên Barista */}
+      {mounted && isLoggedIn && user?.role === 'BARISTA' && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
+          <div className="mx-auto max-w-5xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-amber-950 font-medium">
+              <span className="text-base">☕</span>
+              <span>
+                Bạn đang đăng nhập tài khoản <strong>Nhân viên Barista ({user.fullName})</strong>. Chế độ quản lý quầy: chỉ xem menu, không thể đặt món.
+              </span>
+            </div>
+            <button
+              onClick={() => router.push('/orders')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#5D3A1A] hover:bg-[#472C14] text-white font-semibold transition-colors text-xs whitespace-nowrap shadow-xs"
+            >
+              <span>Đến Bảng Pha Chế Quầy</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. Nội dung Menu chính */}
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-5">
@@ -234,7 +287,7 @@ export default function MenuPage() {
               return (
                 <div
                   key={p.id}
-                  onClick={() => !isOutOfStock && setActiveProduct(p)}
+                  onClick={() => handleSelectProduct(p)}
                   className={`group relative flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-3 shadow-2xs transition-all ${
                     isOutOfStock ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-stone-300'
                   }`}
@@ -257,7 +310,17 @@ export default function MenuPage() {
                         <span className="block text-[10px] text-stone-400">Giá từ</span>
                         <span className="text-sm font-bold text-stone-900">{Number(p.price).toLocaleString('vi-VN')}₫</span>
                       </div>
-                      <button type="button" disabled={isOutOfStock} className="rounded-lg bg-[#5D3A1A] hover:bg-[#472C14] px-2.5 py-1 text-xs text-white font-medium">Chọn +</button>
+                      <button
+                        type="button"
+                        disabled={isOutOfStock}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectProduct(p);
+                        }}
+                        className="rounded-lg bg-[#5D3A1A] hover:bg-[#472C14] px-2.5 py-1 text-xs text-white font-medium"
+                      >
+                        Chọn +
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -267,8 +330,8 @@ export default function MenuPage() {
         )}
       </main>
 
-      {/* Floating Bar: Chỉ hiện trên Mobile khi giỏ hàng có món (Task 5) */}
-      {totalItems > 0 && (
+      {/* Floating Bar: Chỉ hiện trên Mobile khi giỏ hàng có món (và không phải Barista) */}
+      {totalItems > 0 && user?.role !== 'BARISTA' && (
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-stone-200 bg-white/95 p-3 md:hidden shadow-lg backdrop-blur-md">
           <div className="flex items-center justify-between">
             <div>
@@ -291,6 +354,12 @@ export default function MenuPage() {
         product={activeProduct}
         onClose={() => setActiveProduct(null)}
         onAddToCart={handleAddToCart}
+        isLoggedIn={isLoggedIn}
+        onRequireLogin={() => {
+          setActiveProduct(null);
+          showToast('Vui lòng đăng nhập tài khoản trước khi thêm món!', 'warning');
+          setAuthModalOpen(true);
+        }}
       />
 
       {/* 4. Giỏ hàng Drawer bằng Zustand (Task 5) */}
@@ -300,6 +369,10 @@ export default function MenuPage() {
         onProceedToCheckout={() => {
           setIsCartOpen(false);
           setIsCheckoutOpen(true);
+        }}
+        onRequireLogin={() => {
+          setIsCartOpen(false);
+          setAuthModalOpen(true);
         }}
       />
 
@@ -315,6 +388,13 @@ export default function MenuPage() {
         isOpen={isOrderSuccessOpen}
         order={completedOrder}
         onClose={() => setIsOrderSuccessOpen(false)}
+      />
+
+      {/* 7. Modal Đăng nhập / Đăng ký */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={(msg) => showToast(msg, 'success')}
       />
     </div>
   );

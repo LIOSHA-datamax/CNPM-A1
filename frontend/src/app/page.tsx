@@ -20,7 +20,7 @@ const FALLBACK_PRODUCTS: Product[] = [
     category: 'Cà phê truyền thống',
     description: 'Cà phê Robusta truyền thống kết hợp sữa đặc ngọt béo đậm đà chuẩn vị.',
     price: 35000,
-    imageUrl: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=600',
+    imageUrl: '/images/ca-phe-sua.jpg',
     stock: 50,
   },
   {
@@ -29,7 +29,7 @@ const FALLBACK_PRODUCTS: Product[] = [
     category: 'Cà phê Espresso',
     description: 'Espresso đậm vị pha loãng cùng nước tinh khiết thanh nhẹ.',
     price: 40000,
-    imageUrl: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?w=600',
+    imageUrl: '/images/americano.jpg',
     stock: 40,
   },
   {
@@ -38,7 +38,7 @@ const FALLBACK_PRODUCTS: Product[] = [
     category: 'Cà phê Espresso',
     description: 'Espresso Ý hòa quyện cùng lớp bọt sữa mịn màng bồng bềnh.',
     price: 45000,
-    imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=600',
+    imageUrl: '/images/cappuccino.jpg',
     stock: 35,
   },
   {
@@ -47,7 +47,7 @@ const FALLBACK_PRODUCTS: Product[] = [
     category: 'Trà hoa quả',
     description: 'Trà đào thanh mát kết hợp miếng đào tươi giòn ngọt ngào sảng khoái.',
     price: 39000,
-    imageUrl: 'https://images.unsplash.com/photo-1791938393641-c8d03766a709?w=600',
+    imageUrl: '/images/tra-dao.jpg',
     stock: 60,
   },
   {
@@ -56,7 +56,7 @@ const FALLBACK_PRODUCTS: Product[] = [
     category: 'Cold Brew',
     description: 'Cà phê ủ lạnh 16 tiếng hương vị êm dịu, mượt mà thanh mát tự nhiên.',
     price: 45000,
-    imageUrl: 'https://images.pexels.com/photos/13735958/pexels-photo-13735958.jpeg?auto=compress&cs=tinysrgb&w=600',
+    imageUrl: '/images/cold-brew.jpg',
     stock: 50,
   },
   {
@@ -65,7 +65,7 @@ const FALLBACK_PRODUCTS: Product[] = [
     category: 'Trà & Matcha',
     description: 'Trà xanh Uji Nhật Bản thượng hạng hòa quyện sữa tươi béo ngậy thơm lừng.',
     price: 48000,
-    imageUrl: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600',
+    imageUrl: '/images/matcha-latte.jpg',
     stock: 45,
   },
 ];

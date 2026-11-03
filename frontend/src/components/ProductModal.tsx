@@ -4,13 +4,75 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Product, ProductSize, Topping, SelectedProductPayload } from '@/types';
 
-// Danh sách Topping chuẩn theo đề bài (khớp chuẩn UUID PostgreSQL)
+// Danh sách Topping đầy đủ, phong phú và khớp chuẩn UUID PostgreSQL
 export const DEFAULT_TOPPINGS: Topping[] = [
-  { id: 'cc3b5884-8677-4d55-a6e9-7c28f858fb8d', name: 'Trân châu đen', price: 5000 },
-  { id: '87500eb8-ff0b-49f9-bcc8-b7c07b5aee8c', name: 'Trân châu trắng', price: 7000 },
-  { id: '26a1e2d0-04a7-4725-be5c-2adfb0567fb4', name: 'Kem cheese (Kem)', price: 10000 },
-  { id: '4221a337-2125-4f53-b95a-f74316fb18d9', name: 'Thạch cà phê', price: 6000 },
+  { id: 'db22f579-1a61-4b43-b655-98d9f6e42d97', name: 'Trân châu đen', price: 5000 },
+  { id: '0e288871-5b5f-4f0d-98d2-d89b0bc53ca5', name: 'Trân châu trắng', price: 7000 },
+  { id: 'aef36a97-99e0-495e-94bd-77d97565e6e0', name: 'Kem cheese (Kem)', price: 10000 },
+  { id: '890c0b02-4b74-4efd-80d5-394e77033a53', name: 'Thạch cà phê', price: 6000 },
+  { id: '76e71934-f1b3-4614-b59a-a17c83e00c90', name: 'Đào miếng', price: 10000 },
+  { id: '1b32590b-e4b5-44b9-b64d-675298ae911a', name: 'Shot Espresso', price: 10000 },
+  { id: '6f85f99c-97a8-469f-844a-26532346a1c2', name: 'Sữa đặc thêm', price: 5000 },
+  { id: '5324f7e3-f569-4254-a392-d478354a96a7', name: 'Sữa tươi yến mạch (Oat Milk)', price: 10000 },
+  { id: '194938c8-32fb-4dcd-86a8-4a128c6e3029', name: 'Sốt Caramel', price: 8000 },
+  { id: 'e07fc3b5-5356-40f6-8174-2bbc09619ec5', name: 'Bột Cacao', price: 5000 },
+  { id: 'e433aae4-f030-443b-b3ec-d8817f814347', name: 'Thạch trái cây nhiệt đới', price: 8000 },
+  { id: 'ff631643-ae46-49b9-8c5f-d667131225d5', name: 'Hạt chia thanh mát', price: 7000 },
+  { id: '99a67ab4-7989-42c3-b23b-491ea4366edc', name: 'Cam vàng tươi cắt lát', price: 6000 },
+  { id: '567fc08c-2ada-43b9-859b-ae6149347db7', name: 'Đậu đỏ bùi ngọt', price: 8000 },
 ];
+
+// Bản đồ gợi ý topping sát thực tế chuẩn phong cách cà phê hiện đại:
+export const PRODUCT_TOPPING_MAP: Record<string, string[]> = {
+  // Cà phê sữa: Thạch cà phê, Thêm sữa đặc, Thêm Shot Espresso, Sữa yến mạch Oat Milk
+  'Cà phê sữa': [
+    'Thạch cà phê',
+    'Sữa đặc thêm',
+    'Shot Espresso',
+    'Sữa tươi yến mạch (Oat Milk)',
+  ],
+
+  // Americano: Thêm shot Espresso đậm đà, Thạch cà phê, Cam vàng tươi cắt lát (Americano Orange mát lạnh)
+  'Americano': [
+    'Shot Espresso',
+    'Thạch cà phê',
+    'Cam vàng tươi cắt lát',
+  ],
+
+  // Cappuccino: Bột Cacao, Sốt Caramel, Shot Espresso, Kem cheese béo ngậy
+  'Cappuccino': [
+    'Bột Cacao',
+    'Sốt Caramel',
+    'Shot Espresso',
+    'Kem cheese (Kem)',
+  ],
+
+  // Cold Brew: Cam vàng tươi (Cold Brew Cam sảng khoái), Kem cheese, Thạch cà phê, Shot Espresso
+  'Cold Brew': [
+    'Cam vàng tươi cắt lát',
+    'Kem cheese (Kem)',
+    'Thạch cà phê',
+    'Shot Espresso',
+  ],
+
+  // Trà đào: Đào miếng giòn ngọt, Thạch trái cây nhiệt đới, Hạt chia thanh mát, Trân châu trắng, Kem cheese
+  'Trà đào': [
+    'Đào miếng',
+    'Thạch trái cây nhiệt đới',
+    'Hạt chia thanh mát',
+    'Trân châu trắng',
+    'Kem cheese (Kem)',
+  ],
+
+  // Matcha Latte: Đậu đỏ bùi ngọt, Trân châu đen, Trân châu trắng, Kem cheese, Sữa yến mạch Oat Milk
+  'Matcha Latte': [
+    'Đậu đỏ bùi ngọt',
+    'Trân châu đen',
+    'Trân châu trắng',
+    'Kem cheese (Kem)',
+    'Sữa tươi yến mạch (Oat Milk)',
+  ],
+};
 
 export const SIZE_PRICE_OFFSET: Record<ProductSize, number> = {
   S: 0,
@@ -77,6 +139,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   }, [onClose]);
 
   if (!product) return null;
+
+  // Lọc danh sách topping phù hợp với sản phẩm được chọn
+  const suitableToppingNames = PRODUCT_TOPPING_MAP[product.name];
+  const displayToppings = suitableToppingNames
+    ? availableToppings.filter((t) => suitableToppingNames.includes(t.name))
+    : availableToppings;
 
   // Cốt lõi Task 4: Tính lại giá tự động theo tùy chọn thời gian thực
   const basePrice = Number(product.price);
@@ -263,7 +331,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               <span className="text-[11px] text-stone-400">Tùy chọn</span>
             </div>
             <div className="space-y-1.5">
-              {availableToppings.map((topping) => {
+              {displayToppings.map((topping) => {
                 const isChecked = selectedToppings.some((t) => t.id === topping.id);
                 return (
                   <div

@@ -35,12 +35,22 @@ async function main() {
     });
   }
 
-  // 2. Toppings
+  // 2. Toppings đa dạng, sát thực tế quán cà phê & trà hiện đại
   const toppingsData = [
     { name: 'Trân châu đen', price: 5000 },
     { name: 'Trân châu trắng', price: 7000 },
     { name: 'Kem cheese (Kem)', price: 10000 },
     { name: 'Thạch cà phê', price: 6000 },
+    { name: 'Đào miếng', price: 10000 },
+    { name: 'Shot Espresso', price: 10000 },
+    { name: 'Sữa đặc thêm', price: 5000 },
+    { name: 'Sữa tươi yến mạch (Oat Milk)', price: 10000 },
+    { name: 'Sốt Caramel', price: 8000 },
+    { name: 'Bột Cacao', price: 5000 },
+    { name: 'Thạch trái cây nhiệt đới', price: 8000 },
+    { name: 'Hạt chia thanh mát', price: 7000 },
+    { name: 'Cam vàng tươi cắt lát', price: 6000 },
+    { name: 'Đậu đỏ bùi ngọt', price: 8000 },
   ];
 
   const toppings = [];
@@ -58,7 +68,7 @@ async function main() {
       name: 'Cà phê sữa',
       description: 'Cà phê Robusta truyền thống kết hợp sữa đặc ngọt béo đậm đà.',
       price: 35000,
-      imageUrl: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=600',
+      imageUrl: '/images/ca-phe-sua.jpg',
       stock: 50,
       version: 0,
     },
@@ -66,7 +76,7 @@ async function main() {
       name: 'Americano',
       description: 'Espresso pha loãng với nước tinh khiết, hương vị thanh nhẹ thơm nồng.',
       price: 40000,
-      imageUrl: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?w=600',
+      imageUrl: '/images/americano.jpg',
       stock: 40,
       version: 0,
     },
@@ -74,7 +84,7 @@ async function main() {
       name: 'Cappuccino',
       description: 'Espresso kết hợp sữa nóng và lớp bọt sữa béo mịn nghệ thuật.',
       price: 45000,
-      imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=600',
+      imageUrl: '/images/cappuccino.jpg',
       stock: 35,
       version: 0,
     },
@@ -82,7 +92,7 @@ async function main() {
       name: 'Trà đào',
       description: 'Trà đen thanh mát kết hợp đào miếng tươi giòn ngọt ngào.',
       price: 39000,
-      imageUrl: 'https://images.unsplash.com/photo-1791938393641-c8d03766a709?w=600',
+      imageUrl: '/images/tra-dao.jpg',
       stock: 60,
       version: 0,
     },
@@ -90,7 +100,7 @@ async function main() {
       name: 'Cold Brew',
       description: 'Cà phê ủ lạnh 16 tiếng hương vị êm dịu, mượt mà thanh mát tự nhiên.',
       price: 45000,
-      imageUrl: 'https://images.pexels.com/photos/13735958/pexels-photo-13735958.jpeg?auto=compress&cs=tinysrgb&w=600',
+      imageUrl: '/images/cold-brew.jpg',
       stock: 50,
       version: 0,
     },
@@ -98,7 +108,7 @@ async function main() {
       name: 'Matcha Latte',
       description: 'Trà xanh Uji Nhật Bản thượng hạng hòa quyện sữa tươi béo ngậy thơm lừng.',
       price: 48000,
-      imageUrl: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600',
+      imageUrl: '/images/matcha-latte.jpg',
       stock: 45,
       version: 0,
     },
@@ -137,6 +147,24 @@ async function main() {
       phone: '0901234567',
       role: Role.CUSTOMER,
       loyaltyPoints: 120,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: 'lan@brewlite.com' },
+    update: {
+      passwordHash: defaultPasswordHash,
+      fullName: 'lan',
+      phone: '0909574525',
+    },
+    create: {
+      id: 'b6f56a5f-6c9f-46de-9091-d55dc9aee5b7',
+      email: 'lan@brewlite.com',
+      passwordHash: defaultPasswordHash,
+      fullName: 'lan',
+      phone: '0909574525',
+      role: Role.CUSTOMER,
+      loyaltyPoints: 10,
     },
   });
 

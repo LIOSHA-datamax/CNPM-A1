@@ -58,7 +58,7 @@ async function main() {
       name: 'Cà phê sữa',
       description: 'Cà phê Robusta truyền thống kết hợp sữa đặc ngọt béo đậm đà.',
       price: 35000,
-      imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600',
+      imageUrl: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=600',
       stock: 50,
       version: 0,
     },
@@ -82,8 +82,24 @@ async function main() {
       name: 'Trà đào',
       description: 'Trà đen thanh mát kết hợp đào miếng tươi giòn ngọt ngào.',
       price: 39000,
-      imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600',
+      imageUrl: 'https://images.unsplash.com/photo-1791938393641-c8d03766a709?w=600',
       stock: 60,
+      version: 0,
+    },
+    {
+      name: 'Cold Brew',
+      description: 'Cà phê ủ lạnh 16 tiếng hương vị êm dịu, mượt mà thanh mát tự nhiên.',
+      price: 45000,
+      imageUrl: 'https://images.pexels.com/photos/13735958/pexels-photo-13735958.jpeg?auto=compress&cs=tinysrgb&w=600',
+      stock: 50,
+      version: 0,
+    },
+    {
+      name: 'Matcha Latte',
+      description: 'Trà xanh Uji Nhật Bản thượng hạng hòa quyện sữa tươi béo ngậy thơm lừng.',
+      price: 48000,
+      imageUrl: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600',
+      stock: 45,
       version: 0,
     },
   ];
@@ -93,6 +109,15 @@ async function main() {
     let prod = await prisma.product.findFirst({ where: { name: p.name } });
     if (!prod) {
       prod = await prisma.product.create({ data: p });
+    } else {
+      prod = await prisma.product.update({
+        where: { id: prod.id },
+        data: {
+          imageUrl: p.imageUrl,
+          description: p.description,
+          price: p.price,
+        },
+      });
     }
     products.push(prod);
   }

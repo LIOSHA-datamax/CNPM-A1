@@ -14,6 +14,7 @@ export interface CheckoutPaymentParams {
   providerName: string;
   simulateFailure: boolean;
   notes?: string;
+  customItems?: (CartItem | SelectedProductPayload)[];
 }
 
 interface AppStore {
@@ -183,7 +184,7 @@ export async function executeCheckoutPayment(
   params: CheckoutPaymentParams
 ): Promise<OrderConfirmation> {
   const {
-    items,
+    items: cartItems,
     getTotalAmount,
     clearCart,
     user,
@@ -193,7 +194,18 @@ export async function executeCheckoutPayment(
     setLastOrder,
   } = useAppStore.getState();
 
-  const totalAmount = getTotalAmount();
+  const isDirectBuy = Boolean(params.customItems && params.customItems.length > 0);
+
+  const activeItems: CartItem[] = isDirectBuy
+    ? params.customItems!.map((item, idx) => ({
+        ...item,
+        cartItemId: (item as CartItem).cartItemId || `direct-${item.productId}-${Date.now()}-${idx}`,
+      }))
+    : cartItems;
+
+  const totalAmount = isDirectBuy
+    ? activeItems.reduce((sum, i) => sum + i.totalPrice, 0)
+    : getTotalAmount();
 
   if (!isLoggedIn || !accessToken || !user) {
     throw new Error(
@@ -208,12 +220,29 @@ export async function executeCheckoutPayment(
   let backendOrder: any = null;
 
   try {
+    const PRODUCT_FALLBACK_MAP: Record<string, string> = {
+      'prod-1': '79547677-67f7-4d76-a1d7-672c4ffe01b6', // Cà phê sữa
+      'prod-2': '1a271418-ba4f-4eb4-b5c3-47cb9960978a', // Americano
+      'prod-3': '6e43857f-76ae-49a8-ac91-63a9f7385584', // Cappuccino
+      'prod-4': 'eef59179-2894-444f-b918-3914f1c6feb1', // Trà đào
+      'prod-5': 'b8178129-923f-4e0a-bf47-9755b76cfca1', // Cold Brew
+      'prod-6': '9c03792f-b472-4638-a28a-773df4559eb2', // Matcha Latte
+    };
+
+    const TOPPING_FALLBACK_MAP: Record<string, string> = {
+      'top-1': 'cc3b5884-8677-4d55-a6e9-7c28f858fb8d', // Trân châu đen
+      'top-2': '87500eb8-ff0b-49f9-bcc8-b7c07b5aee8c', // Trân châu trắng
+      'top-3': '26a1e2d0-04a7-4725-be5c-2adfb0567fb4', // Kem cheese
+      'top-4': '4221a337-2125-4f53-b95a-f74316fb18d9', // Thạch cà phê
+    };
+
     const orderPayload = {
-      items: items.map((i) => ({
-        productId: i.productId,
+      items: activeItems.map((i) => ({
+        productId: PRODUCT_FALLBACK_MAP[i.productId] || i.productId,
         size: i.size,
         qty: i.quantity,
-        toppingIds: i.selectedToppings?.map((t) => t.id) || [],
+        toppingIds:
+          i.selectedToppings?.map((t) => TOPPING_FALLBACK_MAP[t.id] || t.id) || [],
       })),
       notes: params.notes || undefined,
     };
@@ -306,7 +335,7 @@ export async function executeCheckoutPayment(
   const completedOrder: OrderConfirmation = {
     orderId: actualOrderId,
     orderNumber,
-    items: [...items],
+    items: [...activeItems],
     subtotal: totalAmount,
     discount: 0,
     totalAmount: backendOrder ? Number(backendOrder.total) : totalAmount,
@@ -320,7 +349,9 @@ export async function executeCheckoutPayment(
     notes: params.notes || undefined,
   };
 
-  clearCart();
+  if (!isDirectBuy) {
+    clearCart();
+  }
   setLastOrder(completedOrder);
   return completedOrder;
 }

@@ -2,21 +2,41 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAppStore, executeCheckoutPayment } from '@/cartStore';
-import { PaymentMethodType, OrderConfirmation } from '@/types';
+import { PaymentMethodType, OrderConfirmation, CartItem, SelectedProductPayload } from '@/types';
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (order: OrderConfirmation) => void;
+  directItem?: SelectedProductPayload | null;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  directItem,
 }) => {
   const { items, getTotalAmount, getTotalItems, isLoggedIn, user, accessToken, setAuth } =
     useAppStore();
+
+  const isDirectBuy = Boolean(directItem);
+  const displayItems: CartItem[] = isDirectBuy && directItem
+    ? [
+        {
+          ...directItem,
+          cartItemId: `direct-${directItem.productId}-${directItem.size}`,
+        },
+      ]
+    : items;
+
+  const totalAmount = isDirectBuy && directItem
+    ? directItem.totalPrice
+    : getTotalAmount();
+
+  const totalItems = isDirectBuy && directItem
+    ? directItem.quantity
+    : getTotalItems();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('E_WALLET');
   const [selectedWallet, setSelectedWallet] = useState<'MOMO' | 'VNPAY' | 'ZALOPAY'>('MOMO');
@@ -62,9 +82,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   }, [isOpen, user, isLoggedIn, accessToken, setAuth]);
 
   if (!isOpen) return null;
-
-  const totalAmount = getTotalAmount();
-  const totalItems = getTotalItems();
 
   const handleProcessPayment = async () => {
     setErrorMessage(null);
@@ -122,6 +139,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         providerName,
         simulateFailure,
         notes: combinedNotes,
+        customItems: isDirectBuy && directItem ? displayItems : undefined,
       });
 
       setPendingOrderId(null);
@@ -194,13 +212,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* Tóm tắt đơn hàng ngắn gọn */}
             <div className="rounded-xl border border-stone-200 bg-stone-50/60 p-3.5">
               <div className="flex items-center justify-between text-xs text-stone-600 mb-2">
-                <span className="font-semibold text-stone-800">Đơn hàng của bạn ({totalItems} món)</span>
+                <span className="font-semibold text-stone-800">
+                  {isDirectBuy ? `Sản phẩm mua ngay (${totalItems} món)` : `Đơn hàng của bạn (${totalItems} món)`}
+                </span>
                 <span className="text-[#5D3A1A] font-bold text-sm">
                   {totalAmount.toLocaleString('vi-VN')}₫
                 </span>
               </div>
               <div className="max-h-24 overflow-y-auto space-y-1 pr-1 text-[11px] text-stone-500 divide-y divide-stone-100">
-                {items.map((i) => (
+                {displayItems.map((i) => (
                   <div key={i.cartItemId} className="flex justify-between py-1">
                     <span className="truncate max-w-[260px]">
                       {i.quantity}x {i.name} (Size {i.size})

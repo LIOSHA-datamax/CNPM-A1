@@ -435,7 +435,7 @@ export default function OrderHistoryPage() {
                           </span>
                           <span className="text-stone-300">•</span>
                           <span className="flex items-center gap-1">
-                            <span>📅 Ngày đặt:</span>
+                            <span>Ngày đặt:</span>
                             <strong className="text-stone-800 font-semibold">{formatDateTime(order.createdAt).date}</strong>
                           </span>
                         </div>
@@ -447,12 +447,11 @@ export default function OrderHistoryPage() {
 
                   {/* Ghi chú của khách hàng (Hiển thị chi tiết theo yêu cầu) */}
                   {order.notes && (
-                    <div className={`p-3 sm:px-5 border-b flex items-start gap-2.5 text-xs ${
+                    <div className={`p-3 sm:px-5 border-b text-xs ${
                       isStaff
                         ? 'bg-amber-50/90 border-amber-200 text-amber-950'
                         : 'bg-stone-50 border-stone-200 text-stone-800'
                     }`}>
-                      <span className="text-base select-none shrink-0">📝</span>
                       <div>
                         <span className="font-bold block text-stone-900">
                           {isStaff ? 'Ghi chú của khách hàng:' : 'Ghi chú chi tiết bạn đã yêu cầu:'}
@@ -633,9 +632,8 @@ export default function OrderHistoryPage() {
                             type="button"
                             disabled={updatingId === order.id}
                             onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-xs"
+                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-xs"
                           >
-                            <span>⚡</span>
                             <span>{updatingId === order.id ? 'Đang cập nhật...' : 'Xác nhận đơn (Bắt đầu pha chế)'}</span>
                           </button>
                         )}
@@ -645,9 +643,8 @@ export default function OrderHistoryPage() {
                             type="button"
                             disabled={updatingId === order.id}
                             onClick={() => handleUpdateStatus(order.id, 'READY')}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-xs"
+                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-xs"
                           >
-                            <span>☕</span>
                             <span>{updatingId === order.id ? 'Đang cập nhật...' : 'Hoàn thành đơn (Sẵn sàng nhận)'}</span>
                           </button>
                         )}
@@ -674,9 +671,8 @@ export default function OrderHistoryPage() {
                             type="button"
                             disabled={updatingId === order.id}
                             onClick={() => handleUpdateStatus(order.id, 'COMPLETED')}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-md animate-bounce"
+                            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-md animate-bounce"
                           >
-                            <span>🛍️</span>
                             <span>{updatingId === order.id ? 'Đang xác nhận...' : 'Xác nhận đã nhận đơn'}</span>
                           </button>
                         )}

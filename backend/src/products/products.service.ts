@@ -8,6 +8,12 @@ export class ProductsService {
   private inferCategory(name: string, description?: string | null): string {
     const lowerName = name.toLowerCase();
     const lowerDesc = (description || '').toLowerCase();
+    if (lowerName.includes('matcha')) {
+      return 'Trà & Matcha';
+    }
+    if (lowerName.includes('cold brew') || lowerName.includes('coldbrew')) {
+      return 'Cold Brew';
+    }
     if (lowerName.includes('trà')) {
       return 'Trà hoa quả';
     }

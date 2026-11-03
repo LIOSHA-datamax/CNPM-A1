@@ -12,19 +12,19 @@ import { OrderSuccessModal } from '@/components/OrderSuccessModal';
 import { AuthModal } from '@/components/AuthModal';
 import { useAppStore } from '@/cartStore';
 
-// Dữ liệu mẫu fallback theo đề bài (nếu backend chưa bật)
+// Dữ liệu mẫu fallback theo đề bài (khớp chuẩn UUID PostgreSQL)
 const FALLBACK_PRODUCTS: Product[] = [
   {
-    id: 'prod-1',
+    id: '79547677-67f7-4d76-a1d7-672c4ffe01b6',
     name: 'Cà phê sữa',
     category: 'Cà phê truyền thống',
-    description: 'Cà phê Robusta truyền thống kết hợp sữa đặc ngọt béo thơm lừng.',
+    description: 'Cà phê Robusta truyền thống kết hợp sữa đặc ngọt béo đậm đà chuẩn vị.',
     price: 35000,
-    imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600',
+    imageUrl: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=600',
     stock: 50,
   },
   {
-    id: 'prod-2',
+    id: '1a271418-ba4f-4eb4-b5c3-47cb9960978a',
     name: 'Americano',
     category: 'Cà phê Espresso',
     description: 'Espresso đậm vị pha loãng cùng nước tinh khiết thanh nhẹ.',
@@ -33,7 +33,7 @@ const FALLBACK_PRODUCTS: Product[] = [
     stock: 40,
   },
   {
-    id: 'prod-3',
+    id: '6e43857f-76ae-49a8-ac91-63a9f7385584',
     name: 'Cappuccino',
     category: 'Cà phê Espresso',
     description: 'Espresso Ý hòa quyện cùng lớp bọt sữa mịn màng bồng bềnh.',
@@ -42,13 +42,31 @@ const FALLBACK_PRODUCTS: Product[] = [
     stock: 35,
   },
   {
-    id: 'prod-4',
+    id: 'eef59179-2894-444f-b918-3914f1c6feb1',
     name: 'Trà đào',
     category: 'Trà hoa quả',
-    description: 'Trà đen thơm mát kết hợp miếng đào tươi giòn sần sật.',
+    description: 'Trà đào thanh mát kết hợp miếng đào tươi giòn ngọt ngào sảng khoái.',
     price: 39000,
-    imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600',
+    imageUrl: 'https://images.unsplash.com/photo-1791938393641-c8d03766a709?w=600',
     stock: 60,
+  },
+  {
+    id: 'b8178129-923f-4e0a-bf47-9755b76cfca1',
+    name: 'Cold Brew',
+    category: 'Cold Brew',
+    description: 'Cà phê ủ lạnh 16 tiếng hương vị êm dịu, mượt mà thanh mát tự nhiên.',
+    price: 45000,
+    imageUrl: 'https://images.pexels.com/photos/13735958/pexels-photo-13735958.jpeg?auto=compress&cs=tinysrgb&w=600',
+    stock: 50,
+  },
+  {
+    id: '9c03792f-b472-4638-a28a-773df4559eb2',
+    name: 'Matcha Latte',
+    category: 'Trà & Matcha',
+    description: 'Trà xanh Uji Nhật Bản thượng hạng hòa quyện sữa tươi béo ngậy thơm lừng.',
+    price: 48000,
+    imageUrl: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600',
+    stock: 45,
   },
 ];
 
@@ -68,6 +86,7 @@ export default function MenuPage() {
   // Giỏ hàng, Thanh toán & Xác nhận đơn (Task 5 & Task 8)
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [directCheckoutItem, setDirectCheckoutItem] = useState<SelectedProductPayload | null>(null);
   const [isOrderSuccessOpen, setIsOrderSuccessOpen] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [completedOrder, setCompletedOrder] = useState<OrderConfirmation | null>(null);
@@ -129,6 +148,22 @@ export default function MenuPage() {
     }
     addItem(payload);
     showToast(`Đã thêm ${payload.quantity}x ${payload.name} (${payload.size}) vào giỏ hàng`, 'success');
+  };
+
+  const handleBuyNow = (payload: SelectedProductPayload) => {
+    if (user?.role === 'BARISTA') {
+      showToast('Tài khoản nhân viên chỉ dùng để quản lý đơn hàng quầy, không thể đặt món!', 'warning');
+      return;
+    }
+    if (!isLoggedIn) {
+      showToast('Vui lòng đăng nhập tài khoản trước khi mua hàng!', 'warning');
+      setAuthModalOpen(true);
+      return;
+    }
+    // Chỉ thanh toán riêng món này lúc bấm Mua ngay, không thêm vào giỏ hàng
+    setDirectCheckoutItem(payload);
+    setActiveProduct(null);
+    setIsCheckoutOpen(true);
   };
 
   const handlePaymentSuccess = (order: OrderConfirmation) => {
@@ -354,6 +389,7 @@ export default function MenuPage() {
         product={activeProduct}
         onClose={() => setActiveProduct(null)}
         onAddToCart={handleAddToCart}
+        onBuyNow={handleBuyNow}
         isLoggedIn={isLoggedIn}
         onRequireLogin={() => {
           setActiveProduct(null);
@@ -368,6 +404,7 @@ export default function MenuPage() {
         onClose={() => setIsCartOpen(false)}
         onProceedToCheckout={() => {
           setIsCartOpen(false);
+          setDirectCheckoutItem(null); // Thanh toán toàn bộ giỏ hàng
           setIsCheckoutOpen(true);
         }}
         onRequireLogin={() => {
@@ -379,8 +416,15 @@ export default function MenuPage() {
       {/* 5. Màn hình Chọn phương thức thanh toán (Task 8 - Ví điện tử / Thẻ) */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        onSuccess={handlePaymentSuccess}
+        directItem={directCheckoutItem}
+        onClose={() => {
+          setIsCheckoutOpen(false);
+          setDirectCheckoutItem(null);
+        }}
+        onSuccess={(order) => {
+          setDirectCheckoutItem(null);
+          handlePaymentSuccess(order);
+        }}
       />
 
       {/* 6. Màn hình Xác nhận đặt hàng thành công (Task 8 & 9 - Trạng thái PAID & Mã đơn) */}

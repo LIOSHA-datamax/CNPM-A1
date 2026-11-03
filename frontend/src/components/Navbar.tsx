@@ -78,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 href="/orders"
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold hover:bg-amber-100 transition shadow-2xs"
               >
-                <span>☕ Bảng đơn pha chế quầy</span>
+                <span>Bảng đơn pha chế quầy</span>
               </Link>
             ) : (
               <>
@@ -282,7 +282,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setMobileMenuOpen(false)}
               className="flex w-full items-center justify-between py-1.5 text-xs font-medium text-stone-800"
             >
-              <span>{isBarista ? '☕ Bảng đơn pha chế quầy' : '🕒 Lịch sử đơn hàng'}</span>
+              <span>{isBarista ? 'Bảng đơn pha chế quầy' : '🕒 Lịch sử đơn hàng'}</span>
               <span className="text-stone-400">→</span>
             </Link>
           </div>

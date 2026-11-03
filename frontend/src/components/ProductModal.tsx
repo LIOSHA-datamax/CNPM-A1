@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Product, ProductSize, Topping, SelectedProductPayload } from '@/types';
 
-// Danh sách Topping chuẩn theo đề bài (Fallback khi backend tắt)
+// Danh sách Topping chuẩn theo đề bài (khớp chuẩn UUID PostgreSQL)
 export const DEFAULT_TOPPINGS: Topping[] = [
-  { id: 'top-1', name: 'Trân châu đen', price: 5000 },
-  { id: 'top-2', name: 'Trân châu trắng', price: 7000 },
-  { id: 'top-3', name: 'Kem cheese (Kem)', price: 10000 },
-  { id: 'top-4', name: 'Thạch cà phê', price: 6000 },
+  { id: 'cc3b5884-8677-4d55-a6e9-7c28f858fb8d', name: 'Trân châu đen', price: 5000 },
+  { id: '87500eb8-ff0b-49f9-bcc8-b7c07b5aee8c', name: 'Trân châu trắng', price: 7000 },
+  { id: '26a1e2d0-04a7-4725-be5c-2adfb0567fb4', name: 'Kem cheese (Kem)', price: 10000 },
+  { id: '4221a337-2125-4f53-b95a-f74316fb18d9', name: 'Thạch cà phê', price: 6000 },
 ];
 
 export const SIZE_PRICE_OFFSET: Record<ProductSize, number> = {
@@ -22,6 +22,7 @@ interface ProductModalProps {
   product: Product | null;
   onClose: () => void;
   onAddToCart: (payload: SelectedProductPayload) => void;
+  onBuyNow?: (payload: SelectedProductPayload) => void;
   isLoggedIn?: boolean;
   onRequireLogin?: () => void;
 }
@@ -30,6 +31,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   onAddToCart,
+  onBuyNow,
   isLoggedIn = true,
   onRequireLogin,
 }) => {
@@ -91,14 +93,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     );
   };
 
-  const handleConfirm = () => {
-    if (!isLoggedIn) {
-      if (onRequireLogin) {
-        onRequireLogin();
-      }
-      return;
-    }
-    onAddToCart({
+  const buildPayload = (): SelectedProductPayload | null => {
+    if (!product) return null;
+    return {
       productId: product.id,
       name: product.name,
       imageUrl: product.imageUrl,
@@ -108,8 +105,37 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       quantity,
       unitPrice,
       totalPrice,
-    });
+    };
+  };
+
+  const handleConfirm = () => {
+    if (!isLoggedIn) {
+      if (onRequireLogin) {
+        onRequireLogin();
+      }
+      return;
+    }
+    const payload = buildPayload();
+    if (!payload) return;
+    onAddToCart(payload);
     onClose();
+  };
+
+  const handleBuyNow = () => {
+    if (!isLoggedIn) {
+      if (onRequireLogin) {
+        onRequireLogin();
+      }
+      return;
+    }
+    const payload = buildPayload();
+    if (!payload) return;
+    if (onBuyNow) {
+      onBuyNow(payload);
+    } else {
+      onAddToCart(payload);
+      onClose();
+    }
   };
 
   return (
@@ -309,15 +335,22 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           </div>
         </div>
 
-        {/* Nút Thêm vào giỏ */}
-        <div className="border-t border-stone-200 bg-white p-3.5">
+        {/* Nút Thêm sản phẩm & Mua ngay */}
+        <div className="border-t border-stone-200 bg-white p-3.5 grid grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={handleConfirm}
-            className="flex w-full items-center justify-between rounded-lg bg-[#5D3A1A] hover:bg-[#472C14] px-4 py-2.5 text-white text-sm font-semibold transition-colors"
+            className="flex items-center justify-center rounded-lg border border-[#5D3A1A] bg-white hover:bg-stone-50 py-2.5 px-3 text-[#5D3A1A] text-xs sm:text-sm font-bold transition-colors shadow-2xs"
           >
-            <span>Thêm vào giỏ</span>
-            <span>{totalPrice.toLocaleString('vi-VN')}₫</span>
+            <span>Thêm sản phẩm</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="flex items-center justify-center rounded-lg bg-[#5D3A1A] hover:bg-[#472C14] py-2.5 px-3 text-white text-xs sm:text-sm font-bold transition-colors shadow-xs"
+          >
+            <span>Mua ngay ({totalPrice.toLocaleString('vi-VN')}₫)</span>
           </button>
         </div>
       </div>

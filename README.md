@@ -1,228 +1,400 @@
-# ☕ BrewLite - Ứng dụng đặt cà phê và thanh toán không tiền mặt
+# BrewLite - Ứng dụng đặt cà phê và thanh toán không tiền mặt
 
-> **Đồ án môn học: Công nghệ Phần mềm**  
-> **Quy trình áp dụng:** Agile Scrum (3 Sprints, 10 Tasks)  
-> **Công nghệ chủ đạo:** NestJS (Backend) + Next.js (Frontend) + Prisma ORM + PostgreSQL + Docker
+**Trường Đại học Sài Gòn - Khoa Công nghệ Thông tin**  
+**Môn học:** Công nghệ Phần mềm | **Học kỳ:** I – Năm học 2026–2027  
+**Bài tập lớn:** BrewLite (Phiên bản 1.0)  
+**Quy trình:** Agile Scrum (3 Sprints, 10 Tasks)  
+**Công nghệ:** NestJS (Backend), Next.js 14 (Frontend), PostgreSQL, Prisma ORM, Docker  
 
 ---
 
-## 📌 1. Tổng quan dự án & Cấu trúc Monorepo
+## Mục lục
 
-BrewLite giải quyết bài toán đặt món và thanh toán không dùng tiền mặt tại quầy cà phê chỉ trong vài chạm, giảm thiểu thời gian xếp hàng cho khách và tối ưu hóa luồng pha chế của Barista.
+1. [Tổng quan dự án](#1-tổng-quan-dự-án)
+2. [Kiến trúc hệ thống và cấu trúc thư mục](#2-kiến-trúc-hệ-thống-và-cấu-trúc-thư-mục)
+3. [Danh mục sản phẩm và topping](#3-danh-mục-sản-phẩm-và-topping)
+4. [Product Backlog (10 Task Scrum)](#4-product-backlog-10-task-scrum)
+5. [Luồng nghiệp vụ và Wireframe](#5-luồng-nghiệp-vụ-và-wireframe)
+6. [Nghiệp vụ backend nâng cao (Task 10)](#6-nghiệp-vụ-backend-nâng-cao-task-10)
+7. [Hướng dẫn cài đặt và vận hành](#7-hướng-dẫn-cài-đặt-và-vận-hành)
+8. [Danh sách API và Swagger Documentation](#8-danh-sách-api-và-swagger-documentation)
+9. [Kiểm thử hệ thống (Unit & Integration Tests)](#9-kiểm-thử-hệ-thống-unit--integration-tests)
+10. [Kịch bản demo nghiệm thu](#10-kịch-bản-demo-nghiệm-thu)
+11. [Kế hoạch Sprint và phân công công việc](#11-kế-hoạch-sprint-và-phân-công-công-việc)
+12. [Tiêu chí hoàn thành (Definition of Done)](#12-tiêu-chí-hoàn-thành-definition-of-done)
 
-### Cấu trúc mã nguồn:
+---
+
+## 1. Tổng quan dự án
+
+BrewLite là ứng dụng hỗ trợ khách hàng đặt đồ uống và thanh toán trực tuyến tại quầy cà phê. Mục tiêu chính là giảm bớt thời gian chờ đợi xếp hàng của khách hàng trong giờ cao điểm và tự động hóa luồng tiếp nhận đơn hàng.
+
+### 1.1. Tầm nhìn sản phẩm (Product Vision)
+"BrewLite giúp khách hàng đặt và thanh toán đồ uống không dùng tiền mặt chỉ trong vài chạm, giảm thời gian xếp hàng và nhận đơn nhanh tại quầy."
+
+### 1.2. Các bên liên quan (Stakeholders)
+- **Khách hàng:** Người dùng chính của hệ thống MVP. Xem menu, chọn món (size, topping), quản lý giỏ hàng, thanh toán trực tuyến và tra cứu lịch sử đơn hàng.
+- **Nhân viên quầy (Barista):** Tiếp nhận đơn hàng và cập nhật tiến độ pha chế (tính năng mở rộng quản lý theo trạng thái đơn).
+- **Quản lý / Product Owner:** Định nghĩa yêu cầu, quản lý backlog và đánh giá sản phẩm sau mỗi sprint.
+- **Giảng viên hướng dẫn & nghiệm thu:** Đánh giá việc áp dụng quy trình Scrum, chất lượng code, độ hoàn thiện của các chức năng và tài liệu bàn giao.
+- **Nhóm phát triển:** Phân tích, thiết kế cơ sở dữ liệu, xây dựng API, giao diện người dùng và kiểm thử.
+
+---
+
+## 2. Kiến trúc hệ thống và cấu trúc thư mục
+
+### 2.1. Kiến trúc tổng thể
+Hệ thống được thiết kế theo mô hình client-server phân tách:
+- **Frontend (Next.js 14 App Router):** Giao diện người dùng viết bằng React và TypeScript, sử dụng TailwindCSS để dàn trang, Zustand để quản lý state giỏ hàng.
+- **Backend (NestJS):** Cung cấp RESTful API, xác thực người dùng bằng JWT, kiểm tra tính hợp lệ của dữ liệu đầu vào bằng `class-validator`, quản lý luồng trạng thái đơn hàng và xử lý thanh toán.
+- **Database (PostgreSQL + Prisma ORM):** Lưu trữ dữ liệu quan hệ gồm 8 bảng, quản lý schema và seed dữ liệu tự động bằng Prisma.
+- **Mock Payment Gateway:** Module mô phỏng thanh toán trực tuyến qua thẻ và ví điện tử, hỗ trợ cơ chế Idempotency.
+
+### 2.2. Cấu trúc thư mục Monorepo
+
 ```text
 CNPM-A1/
-├── backend/                   # Backend NestJS REST API
+├── backend/                       # Source code Backend (NestJS)
 │   ├── prisma/
-│   │   ├── schema.prisma      # 8 thực thể CSDL (User, Product, Topping, Order, Payment...)
-│   │   └── seed.ts            # Dữ liệu kiểm thử mẫu (Menu, Topping, Coupon, Orders)
+│   │   ├── schema.prisma          # Định nghĩa 8 bảng dữ liệu
+│   │   └── seed.ts                # Dữ liệu khởi tạo (menu, topping, coupon, user mẫu)
 │   ├── src/
-│   │   ├── prisma/            # Prisma Module & Service toàn cục
-│   │   ├── products/          # Task 2: API Danh sách & Chi tiết sản phẩm
-│   │   ├── orders/            # Task 9: API Lịch sử đơn hàng (GET /orders/me)
-│   │   ├── app.controller.ts  # Task 1: Endpoint Hello World
-│   │   └── main.ts            # Khởi tạo NestJS, CORS, Swagger Docs
-│   ├── Dockerfile             # Multi-stage build container cho Backend
+│   │   ├── auth/                  # Đăng ký, đăng nhập, mã hóa bcrypt, JWT Strategy/Guard
+│   │   ├── products/              # API lấy danh sách và chi tiết món
+│   │   ├── orders/                # API đơn hàng, State Machine, xử lý Idempotency, khóa tồn kho
+│   │   ├── payments/              # Mock thanh toán ví MoMo và thẻ ngân hàng
+│   │   ├── prisma/                # Prisma Module và Prisma Service
+│   │   ├── app.controller.ts      # Endpoint kiểm tra sức khỏe hệ thống (/api)
+│   │   └── main.ts                # Cấu hình CORS, ValidationPipe, Swagger UI
+│   ├── Dockerfile
 │   └── package.json
 │
-├── frontend/                  # Frontend Next.js 14 App Router + TailwindCSS
+├── frontend/                      # Source code Frontend (Next.js 14)
+│   ├── public/
+│   │   └── images/                # Ảnh sản phẩm lưu cục bộ (offline)
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── page.tsx       # Task 1: Trang chủ Hello World & Giới thiệu
-│   │   │   ├── orders/        # Task 9: Màn hình Lịch sử đơn hàng
-│   │   │   └── order-confirmation/ # Task 9: Màn hình Xác nhận đặt đơn
-│   │   └── components/
-│   │       └── Navbar.tsx     # Thanh điều hướng chuẩn UI
-│   ├── Dockerfile             # Container hóa Frontend
+│   │   │   ├── page.tsx           # Trang chủ thực đơn, lọc theo nhóm món
+│   │   │   ├── orders/            # Màn hình lịch sử đơn hàng
+│   │   │   ├── order-confirmation/# Màn hình biên lai xác nhận đơn hàng
+│   │   │   └── layout.tsx         # Layout chính bao bọc giỏ hàng và modal
+│   │   ├── components/
+│   │   │   ├── Navbar.tsx         # Thanh điều hướng, thông tin tài khoản, giỏ hàng
+│   │   │   ├── ProductModal.tsx   # Modal tùy chọn size và topping theo từng món
+│   │   │   ├── CartDrawer.tsx     # Giỏ hàng, cập nhật số lượng, xóa món
+│   │   │   ├── AuthModal.tsx      # Đăng nhập và đăng ký tài khoản
+│   │   │   ├── CheckoutModal.tsx  # Thanh toán, chọn hình thức trả tiền, áp mã giảm giá
+│   │   │   └── OrderSuccessModal.tsx # Thông báo hoàn tất đơn hàng
+│   │   ├── cartStore.ts           # State giỏ hàng (Zustand)
+│   │   └── types.ts               # Định nghĩa interface TypeScript
+│   ├── Dockerfile
 │   └── package.json
 │
-├── docker-compose.yml         # Chạy đồng thời Postgres, Backend, Frontend bằng 1 lệnh
-├── .env.example               # Biến môi trường mẫu của dự án
-└── README.md                  # Tài liệu hướng dẫn cài đặt, vận hành và bàn giao
+├── docker-compose.yml             # File cấu hình chạy đồng thời PostgreSQL, Backend và Frontend
+├── .env.example                   # Khung cấu hình biến môi trường
+├── .vscode/                       # Cấu hình phím tắt F5 và Ctrl+Shift+B
+├── package.json                   # Script chạy song song từ thư mục gốc
+└── README.md                      # Tài liệu bàn giao đồ án
 ```
 
 ---
 
-## 🚀 2. Hướng dẫn chạy Cơ sở dữ liệu từng bước
+## 3. Danh mục sản phẩm và topping
 
-Bạn có thể chọn **Cách 1 (Khuyên dùng - Nhanh nhất qua Docker)** hoặc **Cách 2 (Cài trực tiếp qua pgAdmin/PostgreSQL)**.
+Dữ liệu hình ảnh được lưu trữ trực tiếp trong thư mục `frontend/public/images/`, không phụ thuộc vào liên kết ngoài để đảm bảo khả năng chạy ổn định khi không có mạng.
 
-### ➤ Cách 1: Khởi động PostgreSQL qua Docker (Khuyên dùng)
-Nếu máy bạn đã cài **Docker Desktop**:
-1. Mở Terminal tại thư mục gốc `D:\CNPM-A1`.
-2. Chạy lệnh:
-   ```bash
-   docker compose up -d postgres
-   ```
-3. PostgreSQL sẽ khởi chạy ngầm trên cổng `5432` với thông tin:
-   - Host: `localhost`
-   - Port: `5432`
-   - User: `postgres`
-   - Password: `postgrespassword`
-   - Database: `brewlite`
+### 3.1. Danh sách đồ uống mẫu
+| STT | Tên sản phẩm | Nhóm | Giá gốc | Đường dẫn file ảnh |
+| :-: | :--- | :---: | :-: | :--- |
+| 1 | Cà phê sữa đá | Cà phê | 29.000 đ | `/images/ca-phe-sua.jpg` |
+| 2 | Americano | Cà phê | 35.000 đ | `/images/americano.jpg` |
+| 3 | Cappuccino | Cà phê | 45.000 đ | `/images/cappuccino.jpg` |
+| 4 | Trà đào cam sả | Trà trái cây | 42.000 đ | `/images/tra-dao.jpg` |
+| 5 | Cold Brew | Cà phê | 45.000 đ | `/images/cold-brew.jpg` |
+| 6 | Matcha Latte | Trà & Đá xay | 49.000 đ | `/images/matcha-latte.jpg` |
 
----
-
-### ➤ Cách 2: Khởi động bằng PostgreSQL cài trực tiếp trên máy (pgAdmin)
-Nếu máy bạn không dùng Docker:
-1. Mở **pgAdmin 4** hoặc **SQL Shell (psql)** trên Windows.
-2. Đăng nhập vào tài khoản quản trị PostgreSQL của bạn.
-3. Tạo một Database mới tên là `brewlite`:
-   ```sql
-   CREATE DATABASE brewlite;
-   ```
-4. Ghi nhớ mật khẩu `postgres` mà bạn đã đặt lúc cài PostgreSQL.
+### 3.2. Danh sách topping theo từng nhóm đồ uống
+- **Cà phê (Cà phê sữa, Americano, Cappuccino, Cold Brew):** Thạch cà phê (8.000 đ), Sốt Caramel (8.000 đ), Bột Cacao (5.000 đ), Shot Espresso (10.000 đ), Kem Cheese (10.000 đ), Trân châu đen (8.000 đ).
+- **Trà đào cam sả:** Đào miếng ngâm (10.000 đ), Thạch đào giòn (8.000 đ), Trân châu trắng (8.000 đ), Nha đam (8.000 đ), Hạt chia (5.000 đ).
+- **Matcha Latte:** Thạch matcha (8.000 đ), Đậu đỏ (8.000 đ), Kem Cheese Macchiato (10.000 đ), Trân châu hoàng kim (10.000 đ).
 
 ---
 
-### ➤ Bước tiếp theo: Nạp bảng và Dữ liệu mẫu vào CSDL (Bắt buộc)
+## 4. Product Backlog (10 Task Scrum)
 
-Sau khi PostgreSQL đã hoạt động theo Cách 1 hoặc Cách 2:
+Danh sách 10 hạng mục công việc (Product Backlog Items) được triển khai trong dự án:
 
-1. **Cấu hình biến môi trường:**
-   Vào thư mục `backend`, tạo file `.env` từ file mẫu:
-   ```bash
-   cd D:\CNPM-A1\backend
-   copy .env.example .env
-   ```
-   *Mở file `.env` vừa tạo, nếu dùng mật khẩu khác `postgrespassword`, hãy sửa lại mật khẩu trong chuỗi kết nối:*
-   ```env
-   DATABASE_URL="postgresql://postgres:postgrespassword@localhost:5432/brewlite?schema=public"
-   ```
-
-2. **Cài đặt thư viện và đẩy cấu trúc bảng vào CSDL:**
-   Tại thư mục `backend`, mở PowerShell / CMD và chạy:
-   ```bash
-   # Cài đặt các thư viện cần thiết
-   npm install
-
-   # Đẩy 8 bảng từ schema.prisma vào database
-   npx prisma db push
-
-   # Nạp dữ liệu mẫu ban đầu (Menu, Topping, Voucher, Đơn hàng mẫu)
-   npx prisma db seed
-   ```
-
-3. **Kiểm tra trực quan dữ liệu đã tạo:**
-   Chạy lệnh Prisma Studio:
-   ```bash
-   npx prisma studio
-   ```
-   Trình duyệt sẽ mở `http://localhost:5555`. Bạn có thể bấm vào các bảng `products`, `orders`, `toppings` để thấy dữ liệu mẫu đã được nạp thành công 100%!
+| STT | Hạng mục công việc | Tiêu chí chấp nhận (Acceptance Criteria) |
+| :-: | :--- | :--- |
+| 1 | Khởi tạo dự án và cấu trúc | Tạo monorepo gồm 2 thư mục `frontend` và `backend`, chạy được Hello World, có file README, git repository và file cấu hình `.env.example`. |
+| 2 | API danh sách sản phẩm | NestJS cung cấp `GET /products` và `GET /products/:id` trả về JSON danh sách món, đơn giá, hình ảnh từ cơ sở dữ liệu PostgreSQL qua Prisma ORM. |
+| 3 | Trang Menu (Frontend) | Next.js gọi API `/products`, hiển thị lưới sản phẩm, hỗ trợ lọc theo nhóm đồ uống, có trạng thái loading và empty state. |
+| 4 | Chi tiết và tùy chọn món | Modal chi tiết sản phẩm cho phép chọn size (S/M/L) và danh sách topping riêng cho từng món; tự động cập nhật tổng giá theo thời gian thực. |
+| 5 | Giỏ hàng (Cart) | Thêm, sửa số lượng, xóa món trong giỏ hàng; lưu trữ state tập trung với Zustand; tự động tính tổng tiền; hiển thị badge số lượng trên thanh điều hướng. |
+| 6 | API tạo đơn hàng | NestJS `POST /orders` tiếp nhận dữ liệu giỏ hàng, validate DTO bằng `class-validator`, lưu đơn ở trạng thái PENDING ban đầu và trả về mã đơn hàng. |
+| 7 | Đăng ký / Đăng nhập (JWT) | Cung cấp `POST /auth/register`, `POST /auth/login`; mã hóa mật khẩu bằng bcrypt; cấp phát token JWT; áp dụng Guard bảo vệ các route cần đăng nhập. |
+| 8 | Thanh toán không tiền mặt | Mock Payment Gateway hỗ trợ chọn ví điện tử hoặc thẻ ngân hàng qua `POST /payments`; chuyển đơn thành PAID khi thanh toán thành công, PAYMENT_FAILED khi lỗi. |
+| 9 | Xác nhận, lịch sử đơn & bàn giao | Màn hình xác nhận đơn, `GET /orders/me` tra cứu lịch sử đơn hàng; file `docker-compose.yml` triển khai fullstack; tài liệu hướng dẫn và kịch bản demo end-to-end. |
+| 10 | Nghiệp vụ backend nâng cao | Quản lý trạng thái đơn hàng bằng State Machine; cơ chế Idempotency chống trừ tiền trùng lặp; Transaction và Optimistic Locking kiểm soát tranh chấp kho; tính điểm thưởng và áp dụng voucher. |
 
 ---
 
-## 💻 3. Hướng dẫn chạy dự án trên máy phát triển (Local Dev)
+## 5. Luồng nghiệp vụ và Wireframe
 
-### ➤ Cách nhanh nhất: Chạy trực tiếp trên VS Code (Khuyên dùng)
-Dự án đã được cấu hình sẵn các tiện ích chạy trực tiếp trong VS Code:
+### 5.1. Luồng nghiệp vụ chính (Happy Path)
 
-1. **Cách 1: Nhấn phím F5 (Run & Debug)**
-   - Mở VS Code tại thư mục gốc `CNPM-A1`.
-   - Vào tab **Run and Debug** (`Ctrl + Shift + D`) bên thanh điều hướng trái.
-   - Chọn cấu hình: **`🚀 Fullstack (Frontend + Backend)`** và bấm **▶️ Start Debugging (hoặc nhấn phím F5)**.
-   - VS Code sẽ tự động mở 2 terminal song song: 1 terminal chạy **Backend (port 4000)** và 1 terminal chạy **Frontend (port 3000)**.
-
-2. **Cách 2: Dùng VS Code Build Task (Phím tắt `Ctrl + Shift + B`)**
-   - Nhấn tổ hợp phím **`Ctrl + Shift + B`** (hoặc vào menu `Terminal` -> `Run Task...` -> chọn `🚀 Chạy Fullstack (Backend + Frontend)`).
-
-3. **Cách 3: Chạy 1 lệnh từ Terminal gốc**
-   - Mở Terminal tại thư mục gốc `CNPM-A1` và gõ:
-     ```bash
-     npm run dev
-     ```
-   - Lệnh này sẽ chạy đồng thời cả Backend và Frontend trong cùng 1 cửa sổ với log màu sắc riêng biệt.
-
----
-
-### ➤ Cách chạy thủ công từng service (Truyền thống)
-
-#### 1. Khởi động Backend (NestJS):
-```bash
-cd D:\CNPM-A1\backend
-npm run start:dev
+```text
+[Mở ứng dụng]
+      │
+      ▼
+[Xem Menu món] ──► [Chọn size & topping] ──► [Thêm vào giỏ hàng]
+                                                      │
+                                                      ▼
+[Xác nhận đơn & Mã đơn] ◄── [Thanh toán thẻ/ví] ◄── [Xem giỏ & Tổng tiền]
+      │
+      ▼
+[Nhận đồ uống tại quầy]
 ```
-- **Hello World (Task 1):** Mở trình duyệt truy cập `http://localhost:4000/api`
-- **Swagger API Docs:** `http://localhost:4000/api/docs` (Dùng để test trực tiếp tất cả API)
-- **API Lịch sử đơn hàng (Task 9):** `http://localhost:4000/api/orders/me`
 
-#### 2. Khởi động Frontend (Next.js):
-Mở một cửa sổ Terminal mới:
-```bash
-cd D:\CNPM-A1\frontend
-npm run dev
+### 5.2. Wireframe 5 màn hình cơ bản
+
+```text
++-------------------+   +-------------------+   +-------------------+   +-------------------+   +-------------------+
+| BrewLite Menu     |   | Chi tiết món      |   | Giỏ hàng          |   | Thanh toán        |   | Xác nhận đơn hàng |
++-------------------+   +-------------------+   +-------------------+   +-------------------+   +-------------------+
+| Cà phê sữa    29k |   | Cà phê sữa đá     |   | Cà phê sữa (M) x1 |   | Tổng: 37.000 đ    |   | Đặt hàng thành công!
+| Americano     35k |   | Size: [S] (M) [L] |   | + Thạch cà phê    |   | Phương thức:      |   | Mã đơn: #BL-1042  |
+| Cappuccino    45k |   | Topping:          |   | ----------------- |   | (o) Ví MoMo       |   | Trạng thái: PAID  |
+| Trà đào       42k |   | [x] Thạch cà phê  |   | Tổng: 37.000 đ    |   | ( ) Thẻ ngân hàng |   |                   |
+| Cold Brew     45k |   | [ ] Sốt Caramel   |   |                   |   | Mã: [CHAOBANMOI]  |   | Mời bạn đến quầy  |
+| Matcha Latte  49k |   |                   |   |                   |   |                   |   | nhận đồ uống!     |
++-------------------+   +-------------------+   +-------------------+   +-------------------+   +-------------------+
+| [Xem giỏ hàng (1)]|   | [Thêm vào giỏ]    |   | [Tiến hành trả]   |   | [Xác nhận trả]    |   | [Lịch sử đơn hàng]|
++-------------------+   +-------------------+   +-------------------+   +-------------------+   +-------------------+
+       (1)                     (2)                     (3)                     (4)                     (5)
 ```
-- **Trang chủ Hello World (Task 1):** `http://localhost:3000`
-- **Màn hình Lịch sử đơn hàng (Task 9):** `http://localhost:3000/orders`
-- **Màn hình Xác nhận đặt đơn (Task 9):** `http://localhost:3000/order-confirmation?orderNumber=BL-1042&status=PAID`
 
 ---
 
-## 🐳 4. Chạy toàn bộ hệ thống bằng Docker Compose (Task 9 Bàn giao)
+## 6. Nghiệp vụ backend nâng cao (Task 10)
 
-Chỉ với **1 câu lệnh duy nhất**, toàn bộ CSDL, Backend và Frontend sẽ tự động build và chạy:
+### 6.1. Order State Machine
+Đơn hàng được kiểm soát chuyển trạng thái thông qua hàm `assertTransition()`. Bất kỳ hành động chuyển trạng thái trái phép nào sẽ bị chặn và trả về lỗi HTTP 409 Conflict.
+
+```text
+               thanh toán lỗi
+           +--------------------+
+           |                    |
+           v                    |
+       [PENDING] --------> [PAYMENT_FAILED]
+           |      thử lại       |
+           | thanh toán OK      | hủy đơn
+           v                    v
+        [PAID]            [CANCELLED]
+           |
+           v
+      [PREPARING]
+           |
+           v
+        [READY]
+           |
+           v
+      [COMPLETED]
+```
+
+- Luồng thành công: `PENDING` -> `PAID` -> `PREPARING` -> `READY` -> `COMPLETED`.
+- Luồng ngoại lệ: Khi cổng thanh toán báo lỗi, đơn chuyển thành `PAYMENT_FAILED` và có thể thử lại. Khách hàng hoặc hệ thống có thể hủy đơn thành `CANCELLED`.
+
+### 6.2. Thanh toán Idempotent (Tránh trừ tiền trùng lặp)
+- Khi gọi `POST /api/payments`, frontend gửi kèm chuỗi `idempotencyKey` ngẫu nhiên đại diện cho một lần bấm thanh toán.
+- Trường `idempotencyKey` được đánh chỉ mục `@unique` trong bảng thanh toán.
+- Trường hợp người dùng click liên tục nhiều lần hoặc mạng chập chờn gửi lại request, hệ thống chỉ trừ tiền và ghi nhận đúng 1 lần, các request tiếp theo chỉ đọc lại kết quả giao dịch đã có (`replayed: true`).
+
+### 6.3. Kiểm soát tồn kho khi có tranh chấp (Concurrency Control)
+- Áp dụng kỹ thuật Optimistic Locking kết hợp Database Transaction.
+- Trong trường hợp sản phẩm chỉ còn 5 phần nhưng có 10 khách hàng gửi request đặt mua đồng thời, hệ thống đảm bảo xử lý thành công đúng 5 đơn và từ chối 5 đơn còn lại với thông báo hết hàng, không xảy ra hiện tượng âm kho.
+- Nếu đơn hàng bị hủy, số lượng tồn kho sẽ được hoàn trả tự động vào cơ sở dữ liệu.
+
+### 6.4. Áp dụng mã giảm giá và tích điểm thành viên
+- Mã khuyến mãi mẫu: `CHAOBANMOI` (giảm 10% giá trị đơn hàng, áp dụng cho đơn từ 40.000 đ trở lên).
+- Hệ thống kiểm tra điều kiện áp dụng, hạn sử dụng, số lượt dùng tối đa và tự động hoàn trả lượt dùng nếu đơn bị hủy.
+- Tích điểm thành viên: Cứ mỗi 10.000 đ thanh toán thành công, người dùng được tích lũy 1 điểm vào tài khoản (`loyaltyPoints`).
+
+---
+
+## 7. Hướng dẫn cài đặt và vận hành
+
+### 7.1. Cách 1: Chạy toàn bộ hệ thống bằng Docker Compose (Khuyên dùng khi bàn giao)
+Không cần cài đặt Node.js hay PostgreSQL cục bộ, chỉ cần máy đã cài Docker:
+
 ```bash
-cd D:\CNPM-A1
+# Build image và khởi động ngầm cả 3 container (PostgreSQL, Backend, Frontend)
 docker compose up --build -d
-```
-Khi khởi động xong:
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:4000/api`
-- Swagger Docs: `http://localhost:4000/api/docs`
 
-Để dừng hệ thống:
-```bash
+# Xem log hoạt động của các service
+docker compose logs -f
+
+# Dừng toàn bộ hệ thống
 docker compose down
 ```
 
----
-
-## 📋 5. Kịch bản Demo Bàn giao cho Giảng viên (End-to-End Demo)
-
-| Bước | Hành động | Kết quả mong đợi |
-| :--- | :--- | :--- |
-| **1. Khởi tạo** | Mở `http://localhost:3000` | Trang chủ hiển thị thông điệp Hello World, giới thiệu dự án và công nghệ. |
-| **2. Xem Menu** | Gọi API `GET /api/products` hoặc test qua Swagger `http://localhost:4000/api/docs` | Trả về danh sách 4 món cà phê kèm danh mục topping và tồn kho. |
-| **3. Thanh toán** | Người dùng thực hiện thanh toán qua ví MoMo/Thẻ ngân hàng | Hệ thống tạo đơn và chuyển trạng thái sang `PAID`. |
-| **4. Xác nhận đơn** | Điều hướng sang `/order-confirmation` | Hiển thị màn hình chuẩn Wireframe với mã đơn `#BL-1042`, trạng thái `PAID` và thông báo tới quầy nhận nước. |
-| **5. Lịch sử đơn (Task 9)** | Bấm vào "Xem lịch sử đơn" (`/orders`) | Gọi `GET /api/orders/me`, hiển thị toàn bộ đơn hàng theo thẻ, lọc theo trạng thái (`PAID`, `PREPARING`, `COMPLETED`), hiển thị chi tiết size, topping, tổng tiền và mã giao dịch. |
+Các địa chỉ truy cập:
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:4000/api`
+- Swagger UI: `http://localhost:4000/api/docs`
 
 ---
 
-## 📊 6. Bảng phân công 5 Thành viên & Sprint Burndown Chart
+### 7.2. Cách 2: Chạy trực tiếp trong VS Code (Dành cho phát triển)
 
-### Phân công công việc:
-- **Thành viên 1:** Task 1 (Khởi tạo dự án, monorepo, Git, .env) & Task 9 (API `GET /orders/me`, màn hình lịch sử đơn, docker-compose full, tài liệu demo).
-- **Thành viên 2:** Task 3 (Giao diện Menu Next.js) & Task 4 (Modal chi tiết món, chọn size/topping, tính giá).
-- **Thành viên 3:** Task 5 (Giỏ hàng Zustand, badge số lượng) & Task 8 (Giao diện thanh toán & màn hình xác nhận).
-- **Thành viên 4:** Task 2 (Prisma + API `GET /products`), Task 7 (Auth JWT/bcrypt) & Hỗ trợ Task 8 (API `POST /payments`).
-- **Thành viên 5:** Task 6 (API `POST /orders` validation) & Task 10 (Order State Machine, Idempotent, Optimistic Locking, Unit/Integration test).
+Dự án đã chuẩn bị sẵn file cấu hình `.vscode`:
+- **Chạy bằng phím F5:** Mở VS Code tại thư mục gốc của dự án, nhấn phím **F5** (chọn `Fullstack (Frontend + Backend)`). VS Code sẽ tự mở 2 terminal chạy Backend ở cổng 4000 và Frontend ở cổng 3000.
+- **Chạy bằng Build Task:** Nhấn tổ hợp phím **Ctrl + Shift + B** để khởi chạy tác vụ.
+- **Chạy từ terminal gốc:**
+  ```bash
+  # Khởi động database trong docker
+  npm run docker:db
 
-### Biểu đồ Sprint Burndown Chart mẫu (10 ngày làm việc - 20 Story Points):
-```text
-Story Points
-20 | ●
-18 |   \   * (Thực tế)
-16 |     \   \
-14 |       \   ●
-12 |         \   \
-10 |           \   ●
- 8 |             \   \
- 6 |               \   ●
- 4 |                 \   \
- 2 |                   \   ●
- 0 +-------------------------●---> Ngày
-   0   1   2   3   4   5   6   7   8   9  10
-       [--- Đường lý tưởng (Ideal) ---]
-       [●●● Đường thực tế của nhóm (Actual)]
+  # Chạy đồng thời cả frontend và backend
+  npm run dev
+  ```
+
+---
+
+### 7.3. Cách 3: Chạy thủ công từng service
+
+#### Bước 1: Khởi động cơ sở dữ liệu PostgreSQL
+```bash
+docker compose up -d postgres
 ```
 
-### Sprint Retrospective (Mẫu đánh giá cuối Sprint):
-* **Điều làm tốt (What went well):**
-  - Khởi tạo kiến trúc Monorepo chuẩn chỉ, tách biệt rõ ràng giữa Next.js và NestJS.
-  - Thiết kế Schema Prisma tối ưu, bao quát từ sớm các yêu cầu phức tạp (Optimistic locking version, Idempotency key).
-  - Tích hợp sẵn Swagger UI giúp các thành viên frontend dễ dàng kiểm thử API.
-* **Điều cần cải thiện (What can be improved):**
-  - Cần thống nhất quy ước định dạng giá tiền (VND) và kiểu dữ liệu Decimal giữa FE và BE.
-  - Tăng cường viết Unit Test song song khi code để tránh dồn việc kiểm thử vào cuối Sprint 3.
+#### Bước 2: Thiết lập và chạy Backend
+```bash
+cd backend
+
+# Cài đặt thư viện
+npm install
+
+# Tạo file .env nếu chưa có
+cp .env.example .env
+
+# Đẩy schema vào cơ sở dữ liệu
+npx prisma db push
+
+# Nạp dữ liệu mẫu ban đầu
+npx prisma db seed
+
+# Chạy server ở chế độ development
+npm run start:dev
+```
+
+#### Bước 3: Thiết lập và chạy Frontend
+Mở một cửa sổ terminal mới:
+```bash
+cd frontend
+
+# Cài đặt thư viện
+npm install
+
+# Khởi chạy Next.js
+npm run dev
+```
+
+#### Bước 4: Xem dữ liệu qua Prisma Studio
+Tại thư mục `backend`, chạy:
+```bash
+npx prisma studio
+```
+Truy cập `http://localhost:5555` để duyệt và chỉnh sửa trực tiếp các bảng dữ liệu trên giao diện web.
+
+---
+
+## 8. Danh sách API và Swagger Documentation
+
+Trang tài liệu Swagger UI được tích hợp sẵn tại địa chỉ: `http://localhost:4000/api/docs`
+
+| Phương thức | Đường dẫn API | Chức năng | Phân quyền |
+| :-: | :--- | :--- | :-: |
+| `GET` | `/api` | Kiểm tra kết nối dịch vụ (Task 1) | Công khai |
+| `GET` | `/api/products` | Lấy danh sách sản phẩm và topping (Task 2) | Công khai |
+| `GET` | `/api/products/:id` | Xem thông tin chi tiết một sản phẩm (Task 2) | Công khai |
+| `POST` | `/api/auth/register` | Đăng ký tài khoản người dùng mới (Task 7) | Công khai |
+| `POST` | `/api/auth/login` | Đăng nhập tài khoản, nhận JWT token (Task 7) | Công khai |
+| `POST` | `/api/orders` | Khởi tạo đơn hàng từ giỏ hàng (Task 6) | Cần JWT |
+| `POST` | `/api/payments` | Xử lý thanh toán không tiền mặt (Task 8, 10) | Cần JWT |
+| `GET` | `/api/orders/me` | Lấy danh sách lịch sử đơn hàng của người dùng (Task 9) | Cần JWT |
+
+---
+
+## 9. Kiểm thử hệ thống (Unit & Integration Tests)
+
+Hệ thống cung cấp bộ kiểm thử tự động cho các nghiệp vụ chính của Task 10:
+- Kiểm tra tính đúng đắn của máy trạng thái đơn hàng (chặn chuyển trạng thái sai).
+- Kiểm tra thanh toán lặp với Idempotency Key (chỉ trừ tiền 1 lần).
+- Kiểm tra xử lý tranh chấp tồn kho khi có nhiều request đồng thời.
+- Kiểm tra áp dụng mã voucher và cộng điểm tích lũy.
+
+Chạy lệnh kiểm thử:
+```bash
+cd backend
+npm run test
+```
+
+---
+
+## 10. Kịch bản demo nghiệm thu
+
+Thứ tự 5 bước thực hiện khi demo sản phẩm cho Giảng viên:
+
+1. **Xem menu đồ uống:** Mở trình duyệt tại `http://localhost:3000`. Duyệt danh sách các món cà phê và trà trái cây, kiểm tra hình ảnh offline hiển thị đầy đủ, không bị lỗi ảnh.
+2. **Chọn món và tùy chỉnh:** Bấm vào một món (ví dụ: Trà đào cam sả). Chọn size L, chọn topping (Đào miếng, Thạch đào). Quan sát giá tiền tăng tương ứng theo lựa chọn. Bấm "Thêm vào giỏ hàng" và thấy badge giỏ hàng trên thanh điều hướng cập nhật số lượng.
+3. **Kiểm tra giỏ hàng và áp mã giảm giá:** Mở giỏ hàng, thử tăng giảm số lượng sản phẩm. Nhập mã giảm giá `CHAOBANMOI`, kiểm tra hệ thống giảm 10% trên tổng tiền đơn hàng.
+4. **Thực hiện thanh toán:** Bấm nút thanh toán, chọn hình thức "Ví điện tử MoMo" hoặc "Thẻ ngân hàng", xác nhận thanh toán. Giao diện hiển thị modal biên lai thành công với mã đơn hàng và trạng thái `PAID`.
+5. **Xem lịch sử đơn:** Điều hướng vào trang `/orders`, kiểm tra đơn hàng vừa đặt xuất hiện trong danh sách với đầy đủ chi tiết sản phẩm, topping đã chọn, tổng tiền và mã giao dịch.
+
+---
+
+## 11. Kế hoạch Sprint và phân công công việc
+
+### 11.1. Phân bổ 3 Sprint
+- **Sprint 1 (Nền tảng & Menu):** Task 1, 2, 3, 4 (Khởi tạo hệ thống, xây dựng API sản phẩm, dựng giao diện menu và modal chọn size/topping).
+- **Sprint 2 (Giỏ hàng & Đặt hàng):** Task 5, 6, 7 (Quản lý giỏ hàng Zustand, API tạo đơn hàng, đăng ký đăng nhập JWT).
+- **Sprint 3 (Thanh toán & Nghiệp vụ nâng cao):** Task 8, 9, 10 (Tích hợp cổng thanh toán giả lập, màn hình lịch sử đơn hàng, docker-compose, xử lý tranh chấp và idempotency).
+
+### 11.2. Phân công 5 thành viên nhóm
+| Thành viên | MSSV | Nhiệm vụ phụ trách |
+| :--- | :---: | :--- |
+| **Thành viên 1** | | Task 1 (Khởi tạo monorepo, cấu hình docker) và Task 9 (Trang lịch sử đơn hàng, docker-compose full, tài liệu demo). |
+| **Thành viên 2** | | Task 3 (Giao diện trang chủ menu, bộ lọc danh mục) và Task 4 (Modal tùy chọn size và topping theo món). |
+| **Thành viên 3** | | Task 5 (Quản lý giỏ hàng với Zustand) và Task 8 (Giao diện chọn thanh toán và popup thông báo). |
+| **Thành viên 4** | | Task 2 (Prisma schema, API lấy danh sách món) và Task 7 (Xác thực người dùng, băm mật khẩu, JWT Guard). |
+| **Thành viên 5** | | Task 6 (API tạo đơn hàng, validate dữ liệu) và Task 10 (State Machine, Idempotent, khóa tồn kho, tích điểm). |
+
+### 11.3. Biểu đồ Burndown Chart mẫu (20 Story Points - 10 ngày)
+
+```text
+Story Points
+20 | * [Mục tiêu lý tưởng]  . [Thực tế nhóm]
+18 |   \   .
+16 |     \   \
+14 |       \   .
+12 |         \   \
+10 |           \   .
+ 8 |             \   \
+ 6 |               \   .
+ 4 |                 \   \
+ 2 |                   \   .
+ 0 +-------------------------*---> Ngày
+   0   1   2   3   4   5   6   7   8   9  10
+```
+
+---
+
+## 12. Tiêu chí hoàn thành (Definition of Done)
+
+Một tính năng được nghiệm thu khi đáp ứng các điều kiện sau:
+- Mã nguồn chạy ổn định, không phát sinh lỗi biên dịch ở cả Frontend và Backend.
+- Đáp ứng đúng tiêu chí chấp nhận đã quy định trong đề bài môn học.
+- Mã nguồn được commit rõ ràng trên Git theo từng nhánh tính năng.
+- API có kiểm tra tính hợp lệ của dữ liệu đầu vào; giao diện xử lý tốt các trạng thái chờ và lỗi.
+- Đầy đủ tài liệu hướng dẫn và có thể triển khai nhanh thông qua Docker Compose.

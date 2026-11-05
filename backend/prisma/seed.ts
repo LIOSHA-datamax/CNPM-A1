@@ -4,10 +4,18 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Seeding database...');
 
   // 1. Coupons
   const coupons = [
+    {
+      code: 'CHAOBANMOI',
+      discountPercent: 10,
+      minOrderValue: 40000,
+      usageLimit: 100,
+      isActive: true,
+      expiresAt: new Date('2027-12-31'),
+    },
     {
       code: 'BREWNEW',
       discountPercent: 20,
@@ -183,6 +191,21 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: { email: 'admin@brewlite.com' },
+    update: {
+      passwordHash: defaultPasswordHash,
+      fullName: 'Quản trị viên',
+    },
+    create: {
+      email: 'admin@brewlite.com',
+      passwordHash: defaultPasswordHash,
+      fullName: 'Quản trị viên',
+      phone: '0909999999',
+      role: Role.ADMIN,
+    },
+  });
+
   // 5. Seed sample orders for Task 9 (Order History GET /orders/me demo)
   const existingOrder = await prisma.order.findFirst({
     where: { userId: customerUser.id },
@@ -316,15 +339,15 @@ async function main() {
       },
     });
 
-    console.log('✅ Seeded 3 sample orders for customer@brewlite.com (BL-1042, BL-1038, BL-1025)');
+    console.log('Seeded 3 sample orders for customer@brewlite.com (BL-1042, BL-1038, BL-1025)');
   }
 
-  console.log('✅ Seeding completed successfully!');
+  console.log('Seeding completed successfully!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seeding error:', e);
+    console.error('Seeding error:', e);
     process.exit(1);
   })
   .finally(async () => {

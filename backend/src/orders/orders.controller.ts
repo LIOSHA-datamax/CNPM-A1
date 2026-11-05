@@ -57,7 +57,15 @@ export class OrdersController {
     @Headers('x-user-id') userIdHeader?: string,
     @Headers('x-dev-user-id') devUserIdHeader?: string,
   ) {
-    const fromJwt = req.user?.id ?? req.user?.userId ?? req.user?.sub;
+    let tokenSub: string | undefined;
+    const authHeader = req.headers?.authorization || req.headers?.Authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      try {
+        const payload = JSON.parse(Buffer.from(authHeader.split(' ')[1].split('.')[1], 'base64').toString());
+        tokenSub = payload?.sub || payload?.id || payload?.userId;
+      } catch {}
+    }
+    const fromJwt = req.user?.id ?? req.user?.userId ?? req.user?.sub ?? tokenSub;
     const effectiveUserId = fromJwt || userIdHeader || devUserIdHeader || userIdQuery;
     if (!effectiveUserId) {
       return [];

@@ -7,7 +7,7 @@ import { AppService } from './app.service';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get()
+  @Get(['', 'api'])
   @ApiOperation({ summary: 'Kiểm tra trạng thái máy chủ (Task 1: Hello World)' })
   @ApiResponse({ status: 200, description: 'Hệ thống hoạt động bình thường' })
   getHello() {

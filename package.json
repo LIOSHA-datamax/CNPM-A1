@@ -4,6 +4,8 @@
   "description": "BrewLite - NestJS + Next.js + PostgreSQL",
   "private": true,
   "scripts": {
+    "setup": "node .vscode/bootstrap.js",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
     "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"green.bold,cyan.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm --prefix backend run start:dev",
     "dev:frontend": "npm --prefix frontend run dev",
@@ -14,7 +16,11 @@
     "prisma:push": "npm --prefix backend run prisma:push",
     "prisma:seed": "npm --prefix backend run prisma:seed",
     "prisma:studio": "npm --prefix backend run prisma:studio",
-    "docker:db": "docker compose up -d postgres"
+    "docker:db": "docker compose up -d postgres",
+    "docker:up": "node scripts/docker-up.js",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:ps": "docker compose ps"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

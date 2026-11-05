@@ -3,6 +3,8 @@
 # ==========================================================
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache openssl libc6-compat
+
 WORKDIR /app
 
 # Sao chép file cấu hình dependency
@@ -24,20 +26,18 @@ RUN npm run build
 # --- Runner Stage (Image nhẹ để chạy ứng dụng) ---
 FROM node:20-alpine AS runner
 
+RUN apk add --no-cache openssl libc6-compat
+
 WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
+COPY tsconfig*.json ./
 COPY prisma ./prisma/
-
-# Chỉ cài production dependencies
-RUN npm install --omit=dev
-RUN npx prisma generate
-
-# Sao chép dist từ builder
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 4000
 
-# Script khởi động: Chờ DB, push DB schema rồi start server
-CMD ["node", "dist/src/main.js"]
+# Khởi động: Tự động đồng bộ DB schema, nạp dữ liệu mẫu (seed) rồi chạy NestJS
+CMD ["sh", "-c", "npx prisma db push && (node dist/prisma/seed.js || npx ts-node prisma/seed.ts || true) && (node dist/src/main.js || node dist/main.js)"]

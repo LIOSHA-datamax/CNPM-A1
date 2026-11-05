@@ -6,7 +6,8 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run start:dev",
-      "cwd": "${workspaceFolder}/backend"
+      "cwd": "${workspaceFolder}/backend",
+      "preLaunchTask": "Chuẩn bị môi trường (Dependencies + DB + Seed)"
     },
     {
       "name": "🔵 Frontend: Next.js",
@@ -16,7 +17,7 @@
       "cwd": "${workspaceFolder}/frontend"
     },
     {
-      "name": "🐛 Backend: NestJS (Debug Breakpoint)",
+      "name": "Backend: NestJS (Debug Breakpoint)",
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run start:debug",
@@ -25,7 +26,7 @@
   ],
   "compounds": [
     {
-      "name": "🚀 Fullstack (Frontend + Backend)",
+      "name": "Fullstack (Frontend + Backend)",
       "configurations": [
         "🟢 Backend: NestJS",
         "🔵 Frontend: Next.js"

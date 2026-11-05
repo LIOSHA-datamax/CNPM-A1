@@ -2,12 +2,12 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "🚀 Chạy Fullstack (Backend + Frontend)",
+      "label": "Chạy Fullstack (Backend + Frontend)",
       "dependsOn": [
-        "🟢 Chạy Backend (NestJS)",
-        "🔵 Chạy Frontend (Next.js)"
+        "Chuẩn bị môi trường (Dependencies + DB + Seed)",
+        "Khởi động song song (Backend + Frontend)"
       ],
-      "dependsOrder": "parallel",
+      "dependsOrder": "sequence",
       "problemMatcher": [],
       "group": {
         "kind": "build",
@@ -15,7 +15,36 @@
       }
     },
     {
-      "label": "🟢 Chạy Backend (NestJS)",
+      "label": "Khởi động song song (Backend + Frontend)",
+      "dependsOn": [
+        "Chạy Backend (NestJS)",
+        "Chạy Frontend (Next.js)"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Chuẩn bị môi trường (Dependencies + DB + Seed)",
+      "type": "shell",
+      "command": "node .vscode/bootstrap.js",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": false
+      },
+      "icon": {
+        "id": "tools",
+        "color": "terminal.ansiCyan"
+      }
+    },
+    {
+      "label": "Chạy Backend (NestJS)",
       "type": "shell",
       "command": "npm run start:dev",
       "options": {
@@ -46,7 +75,7 @@
       }
     },
     {
-      "label": "🔵 Chạy Frontend (Next.js)",
+      "label": "Chạy Frontend (Next.js)",
       "type": "shell",
       "command": "npm run dev",
       "options": {
@@ -77,7 +106,7 @@
       }
     },
     {
-      "label": "🗄️ Khởi động Database (Docker Postgres)",
+      "label": "Khởi động Database (Docker Postgres)",
       "type": "shell",
       "command": "docker compose up -d postgres",
       "options": {
@@ -96,7 +125,7 @@
       }
     },
     {
-      "label": "💎 Mở Prisma Studio (Giao diện xem DB)",
+      "label": "Mở Prisma Studio (Giao diện xem DB)",
       "type": "shell",
       "command": "npm run prisma:studio",
       "options": {
@@ -113,7 +142,25 @@
         "id": "table",
         "color": "terminal.ansiCyan"
       }
+    },
+    {
+      "label": "Chạy Fullstack bằng Docker (Docker Compose)",
+      "type": "shell",
+      "command": "docker compose up -d --build",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "icon": {
+        "id": "package",
+        "color": "terminal.ansiBlue"
+      }
     }
   ]
 }
-

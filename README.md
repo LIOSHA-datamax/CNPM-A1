@@ -224,36 +224,56 @@ Danh sách 10 hạng mục công việc (Product Backlog Items) được triển
 
 ## 7. Hướng dẫn cài đặt và vận hành
 
-### 7.1. Cách 1: Chạy toàn bộ hệ thống bằng Docker Compose (Khuyên dùng khi bàn giao)
-Không cần cài đặt Node.js hay PostgreSQL cục bộ, chỉ cần máy đã cài Docker:
+### 7.1. Cách 1: Chạy toàn bộ hệ thống bằng Docker 
+Hỗ trợ tương thích 100% trên cả **Windows, macOS và Linux**. Chỉ cần máy đã cài **Docker Desktop**:
 
+> 💡 **Khởi chạy bằng 1 lệnh duy nhất cho mọi hệ điều hành:**
+> Mở terminal / CMD tại thư mục dự án và chạy:
+> ```bash
+> npm run docker:up
+> ```
+> *Script thông minh sẽ tự động kiểm tra Docker daemon, tự mở Docker Desktop nếu chưa bật, giải phóng container cũ và khởi động đầy đủ PostgreSQL, Backend và Frontend.*
+
+**Các lệnh Docker hữu ích:**
 ```bash
-# Build image và khởi động ngầm cả 3 container (PostgreSQL, Backend, Frontend)
-docker compose up --build -d
+# Xem log hoạt động của các container theo thời gian thực
+npm run docker:logs
 
-# Xem log hoạt động của các service
-docker compose logs -f
+# Kiểm tra trạng thái các container
+npm run docker:ps
 
 # Dừng toàn bộ hệ thống
-docker compose down
+npm run docker:down
+```
+
+**Hoặc dùng lệnh Docker Compose gốc:**
+```bash
+docker compose up -d --build
 ```
 
 Các địa chỉ truy cập:
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:4000/api`
-- Swagger UI: `http://localhost:4000/api/docs`
+- Frontend (Giao diện đặt món): `http://localhost:3000`
+- Backend REST API: `http://localhost:4000`
+- Swagger API Docs: `http://localhost:4000/api/docs`
 
 ---
 
-### 7.2. Cách 2: Chạy trực tiếp trong VS Code (Dành cho phát triển)
+### 7.2. Cách 2: Chạy trực tiếp trong VS Code (Dành cho phát triển & debug)
 
-Dự án đã chuẩn bị sẵn file cấu hình `.vscode`:
-- **Chạy bằng phím F5:** Mở VS Code tại thư mục gốc của dự án, nhấn phím **F5** (chọn `Fullstack (Frontend + Backend)`). VS Code sẽ tự mở 2 terminal chạy Backend ở cổng 4000 và Frontend ở cổng 3000.
-- **Chạy bằng Build Task:** Nhấn tổ hợp phím **Ctrl + Shift + B** để khởi chạy tác vụ.
-- **Chạy từ terminal gốc:**
+Dự án đã tích hợp script tự động hóa chuẩn bị môi trường:
+1. Mở thư mục dự án trong **VS Code**.
+2. Nhấn tổ hợp phím **`Ctrl + Shift + B`** (hoặc chọn menu *Terminal -> Run Build Task... -> Chạy Fullstack*).
+3. Hệ thống sẽ tự động:
+   - Tạo file cấu hình `.env` cho backend và `.env.local` cho frontend.
+   - Kiểm tra và cài đặt dependencies cần thiết (tinh gọn, không spam log cảnh báo).
+   - Tự động bật Docker Desktop và khởi động PostgreSQL container.
+   - Đồng bộ Prisma Schema và nạp dữ liệu mẫu (Seed 6 món nước, topping, 3 user mẫu, voucher).
+   - Khởi chạy song song Backend (NestJS :4000) và Frontend (Next.js :3000).
+
+- **Hoặc khởi chạy từ terminal:**
   ```bash
-  # Khởi động database trong docker
-  npm run docker:db
+  # Tự động chuẩn bị môi trường và DB
+  npm run setup
 
   # Chạy đồng thời cả frontend và backend
   npm run dev
@@ -306,6 +326,26 @@ Tại thư mục `backend`, chạy:
 npx prisma studio
 ```
 Truy cập `http://localhost:5555` để duyệt và chỉnh sửa trực tiếp các bảng dữ liệu trên giao diện web.
+
+---
+
+### 7.4. Ma trận phân quyền và Tài khoản kiểm thử (RBAC & Test Accounts)
+
+Hệ thống áp dụng mô hình phân quyền dựa trên vai trò (**Role-Based Access Control - RBAC**) với 3 nhóm người dùng chính theo yêu cầu môn học:
+
+1. **Khách hàng (`CUSTOMER`):** Người dùng dịch vụ đặt món. Có thể duyệt menu, tùy chọn sản phẩm (size, topping), tạo đơn hàng, áp dụng voucher khuyến mãi, thực hiện thanh toán trực tuyến, tra cứu lịch sử đơn hàng cá nhân và tích lũy điểm thưởng thành viên.
+2. **Nhân viên pha chế (`BARISTA`):** Tiếp nhận danh sách đơn hàng đã thanh toán (`PAID`), thực hiện cập nhật tiến độ pha chế theo quy trình trạng thái (`PREPARING` -> `READY`).
+3. **Quản trị viên (`ADMIN`):** Quản trị danh mục sản phẩm, theo dõi toàn bộ hệ thống đơn hàng và cấu hình tham số khuyến mãi.
+
+Để phục vụ công tác chấm điểm và thực nghiệm hệ thống của Giảng viên:
+- **Tùy chọn 1:** Giảng viên có thể đăng ký một tài khoản Khách hàng mới trực tiếp trên giao diện ứng dụng (nút *Đăng ký mới* tại modal Đăng nhập).
+- **Tùy chọn 2:** Sử dụng các tài khoản kiểm thử đã được nạp sẵn dữ liệu mẫu (Seed Data) chuẩn hóa theo đồ án:
+
+| Vai trò (Role) | Email kiểm thử | Mật khẩu mặc định | Dữ liệu mẫu phục vụ nghiệm thu |
+| :--- | :--- | :---: | :--- |
+| **Khách hàng (Customer)** | `customer@brewlite.com` | `123456` | Đã nạp sẵn 3 đơn hàng lịch sử (BL-1042, BL-1038, BL-1025) và 120 điểm loyalty để phục vụ kiểm thử ngay màn hình Lịch sử đơn hàng (Task 9). |
+| **Nhân viên quầy (Barista)** | `barista@brewlite.com` | `123456` | Tài khoản nhân viên phục vụ kiểm thử luồng cập nhật trạng thái chế biến tại quầy. |
+| **Quản trị viên (Admin)** | `admin@brewlite.com` | `123456` | Quyền Quản trị viên hệ thống. |
 
 ---
 

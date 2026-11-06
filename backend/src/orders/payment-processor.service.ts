@@ -85,7 +85,7 @@ export class PaymentProcessorService {
         const inflight = await tx.payment.findFirst({
           where: { orderId, status: 'PENDING' },
         });
-        if (inflight) {
+        if (inflight && inflight.idempotencyKey !== idempotencyKey) {
           throw new ConflictException(
             'Đơn đang có giao dịch thanh toán khác được xử lý',
           );

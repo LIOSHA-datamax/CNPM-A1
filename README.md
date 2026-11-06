@@ -309,6 +309,19 @@ Truy cập `http://localhost:5555` để duyệt và chỉnh sửa trực tiếp
 
 ---
 
+### 7.4. Tài khoản mẫu dùng để đăng nhập và nghiệm thu
+
+Hệ thống đã nạp sẵn các tài khoản thử nghiệm phục vụ chấm bài và demo (tất cả đều dùng mật khẩu mặc định là `123456`):
+
+| Vai trò (Role) | Email đăng nhập | Mật khẩu | Ghi chú |
+| :--- | :--- | :---: | :--- |
+| **Khách hàng (Customer)** | `customer@brewlite.com` | `123456` | Có sẵn 3 đơn hàng lịch sử và 120 điểm tích lũy |
+| **Khách hàng cá nhân** | `lan@brewlite.com` | `123456` | Tài khoản khách hàng cá nhân |
+| **Quản trị viên (Admin)** | `admin@brewlite.com` | `123456` | Quyền Quản trị viên (Admin) |
+| **Nhân viên quầy (Barista)** | `barista@brewlite.com` | `123456` | Quyền Nhân viên pha chế |
+
+---
+
 ## 8. Danh sách API và Swagger Documentation
 
 Trang tài liệu Swagger UI được tích hợp sẵn tại địa chỉ: `http://localhost:4000/api/docs`

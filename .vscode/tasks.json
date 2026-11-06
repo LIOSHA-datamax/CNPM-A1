@@ -2,16 +2,45 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "🚀 Chạy Fullstack (Backend + Frontend)",
+      "label": "Chạy Fullstack (Backend + Frontend)",
+      "dependsOn": [
+        "Chuẩn bị môi trường (Dependencies + DB + Seed)",
+        "Khởi động song song (Backend + Frontend)"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Khởi động song song (Backend + Frontend)",
       "dependsOn": [
         "🟢 Chạy Backend (NestJS)",
         "🔵 Chạy Frontend (Next.js)"
       ],
       "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Chuẩn bị môi trường (Dependencies + DB + Seed)",
+      "type": "shell",
+      "command": "node .vscode/bootstrap.js",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "problemMatcher": [],
-      "group": {
-        "kind": "build",
-        "isDefault": true
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": false
+      },
+      "icon": {
+        "id": "tools",
+        "color": "terminal.ansiCyan"
       }
     },
     {
@@ -96,7 +125,7 @@
       }
     },
     {
-      "label": "💎 Mở Prisma Studio (Giao diện xem DB)",
+      "label": "Mở Prisma Studio (Giao diện xem DB)",
       "type": "shell",
       "command": "npm run prisma:studio",
       "options": {
@@ -116,4 +145,3 @@
     }
   ]
 }
-

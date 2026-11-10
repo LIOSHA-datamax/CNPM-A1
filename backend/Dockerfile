@@ -40,4 +40,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 4000
 
 # Khởi động: Tự động đồng bộ DB schema, nạp dữ liệu mẫu (seed) rồi chạy NestJS
-CMD ["sh", "-c", "npx prisma db push && (npx ts-node prisma/seed.ts || true) && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma db push && (node dist/prisma/seed.js || npx ts-node prisma/seed.ts || true) && (node dist/src/main.js || node dist/main.js)"]

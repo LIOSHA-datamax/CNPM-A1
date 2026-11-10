@@ -16,7 +16,11 @@
     "prisma:push": "npm --prefix backend run prisma:push",
     "prisma:seed": "npm --prefix backend run prisma:seed",
     "prisma:studio": "npm --prefix backend run prisma:studio",
-    "docker:db": "docker compose up -d postgres"
+    "docker:db": "docker compose up -d postgres",
+    "docker:up": "node scripts/docker-up.js",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:ps": "docker compose ps"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

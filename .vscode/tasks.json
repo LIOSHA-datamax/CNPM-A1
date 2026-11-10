@@ -17,8 +17,8 @@
     {
       "label": "Khởi động song song (Backend + Frontend)",
       "dependsOn": [
-        "🟢 Chạy Backend (NestJS)",
-        "🔵 Chạy Frontend (Next.js)"
+        "Chạy Backend (NestJS)",
+        "Chạy Frontend (Next.js)"
       ],
       "dependsOrder": "parallel",
       "problemMatcher": []
@@ -44,7 +44,7 @@
       }
     },
     {
-      "label": "🟢 Chạy Backend (NestJS)",
+      "label": "Chạy Backend (NestJS)",
       "type": "shell",
       "command": "npm run start:dev",
       "options": {
@@ -75,7 +75,7 @@
       }
     },
     {
-      "label": "🔵 Chạy Frontend (Next.js)",
+      "label": "Chạy Frontend (Next.js)",
       "type": "shell",
       "command": "npm run dev",
       "options": {
@@ -106,7 +106,7 @@
       }
     },
     {
-      "label": "🗄️ Khởi động Database (Docker Postgres)",
+      "label": "Khởi động Database (Docker Postgres)",
       "type": "shell",
       "command": "docker compose up -d postgres",
       "options": {
@@ -141,6 +141,25 @@
       "icon": {
         "id": "table",
         "color": "terminal.ansiCyan"
+      }
+    },
+    {
+      "label": "Chạy Fullstack bằng Docker (Docker Compose)",
+      "type": "shell",
+      "command": "docker compose up -d --build",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "icon": {
+        "id": "package",
+        "color": "terminal.ansiBlue"
       }
     }
   ]
